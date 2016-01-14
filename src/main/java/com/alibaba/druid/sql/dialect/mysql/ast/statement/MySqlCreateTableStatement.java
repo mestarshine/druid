@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,8 +36,6 @@ import com.alibaba.druid.util.JdbcConstants;
 public class MySqlCreateTableStatement extends SQLCreateTableStatement implements MySqlStatement {
 
     private Map<String, SQLObject> tableOptions = new LinkedHashMap<String, SQLObject>();
-
-    protected SQLSelect            query;
 
     private SQLPartitioningClause  partitioning;
 
@@ -90,12 +88,14 @@ public class MySqlCreateTableStatement extends SQLCreateTableStatement implement
         return tableOptions;
     }
 
+    @Deprecated
     public SQLSelect getQuery() {
-        return query;
+        return select;
     }
 
+    @Deprecated
     public void setQuery(SQLSelect query) {
-        this.query = query;
+        this.select = query;
     }
 
     @Override
@@ -113,7 +113,7 @@ public class MySqlCreateTableStatement extends SQLCreateTableStatement implement
             this.acceptChild(visitor, getTableSource());
             this.acceptChild(visitor, getTableElementList());
             this.acceptChild(visitor, getLike());
-            this.acceptChild(visitor, getQuery());
+            this.acceptChild(visitor, getSelect());
         }
         visitor.endVisit(this);
     }

@@ -1,7 +1,5 @@
 package com.alibaba.druid.bvt.sql.mysql;
 
-import junit.framework.TestCase;
-
 import com.alibaba.druid.sql.ast.expr.SQLBinaryExpr;
 import com.alibaba.druid.sql.ast.expr.SQLBooleanExpr;
 import com.alibaba.druid.sql.dialect.mysql.ast.MySqlForceIndexHint;
@@ -44,7 +42,6 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlRenameTableStateme
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlReplaceStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlResetStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlRollbackStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectGroupBy;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock.Limit;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSetCharSetStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSetNamesStatement;
@@ -87,7 +84,6 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowSlaveHostsStat
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowSlaveStatusStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowStatusStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowTableStatusStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowTablesStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowTriggersStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowWarningsStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlStartTransactionStatement;
@@ -96,6 +92,8 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUnionQuery;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUnlockTablesStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUpdateStatement;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlASTVisitorAdapter;
+
+import junit.framework.TestCase;
 
 public class MySqlASTVisitorAdapterTest extends TestCase {
 
@@ -114,11 +112,9 @@ public class MySqlASTVisitorAdapterTest extends TestCase {
         new MySqlInsertStatement().accept(adapter);
         new MySqlLoadXmlStatement().accept(adapter);
         new MySqlReplaceStatement().accept(adapter);
-        new MySqlSelectGroupBy().accept(adapter);
         new MySqlStartTransactionStatement().accept(adapter);
         new MySqlRollbackStatement().accept(adapter);
         new MySqlShowColumnsStatement().accept(adapter);
-        new MySqlShowTablesStatement().accept(adapter);
         new MySqlShowDatabasesStatement().accept(adapter);
         new MySqlShowWarningsStatement().accept(adapter);
         new MySqlShowStatusStatement().accept(adapter);

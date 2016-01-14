@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,13 +29,14 @@ public class OdpsSelectTest_mapjoin extends TestCase {
                 + "\nb.customer_id,"
                 + "\nb.total_price"
                 + "\nfrom shop a join sale_detail b"
-                + "\non a.shop_name = b.shop_name;";
+                + "\non a.shop_name = b.shop_name and b.ds = '20150101';";
         Assert.assertEquals("SELECT /*+ mapjoin(a) */ a.shop_name"
                 + "\n\t, b.customer_id"
                 + "\n\t, b.total_price"
                 + "\nFROM shop a"
                 + "\nJOIN sale_detail b"
-                + "\n\tON a.shop_name = b.shop_name;", SQLUtils.formatOdps(sql));
+                + "\nON a.shop_name = b.shop_name"
+                + "\n\tAND b.ds = '20150101';", SQLUtils.formatOdps(sql));
     }
 
 

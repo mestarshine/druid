@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,19 @@ public class MySqlSQLColumnDefinition extends SQLColumnDefinition {
 
     private SQLExpr storage;
 
+    private SQLExpr charsetExpr;
+
+
     public MySqlSQLColumnDefinition(){
 
+    }
+
+    public SQLExpr getCharsetExpr() {
+        return charsetExpr;
+    }
+
+    public void setCharsetExpr(SQLExpr charsetExpr) {
+        this.charsetExpr = charsetExpr;
     }
 
     public boolean isAutoIncrement() {

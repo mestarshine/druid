@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,32 +42,32 @@ public class DB2OutputVisitor extends SQLASTOutputVisitor implements DB2ASTVisit
                 SQLOrderBy orderBy= ((SQLSelect) parent).getOrderBy();
                 if (orderBy!=null&&orderBy.getItems().size() > 0) {
                     println();
-                    print("ORDER BY ");
+                    print0(ucase ? "ORDER BY " : "order by ");
                     printAndAccept(orderBy.getItems(), ", ");
                     ((SQLSelect) parent).setOrderBy(null);
                 }
             }
             println();
-            print("FETCH FIRST ");
+            print0(ucase ? "FETCH FIRST " : "fetch first ");
             x.getFirst().accept(this);
-            print(" ROWS ONLY");
+            print0(ucase ? " ROWS ONLY" : " rows only");
 
 
         }
         if (x.isForReadOnly()) {
             println();
-            print("FOR READ ONLY");
+            print0(ucase ? "FOR READ ONLY" : "for read only");
         }
 
         if (x.getIsolation() != null) {
             println();
-            print("WITH ");
-            print(x.getIsolation().name());
+            print0(ucase ? "WITH " : "with ");
+            print0(x.getIsolation().name());
         }
 
         if (x.getOptimizeFor() != null) {
             println();
-            print("OPTIMIZE FOR ");
+            print0(ucase ? "OPTIMIZE FOR " : "optimize for ");
             x.getOptimizeFor().accept(this);
         }
 
@@ -82,7 +82,7 @@ public class DB2OutputVisitor extends SQLASTOutputVisitor implements DB2ASTVisit
 
     @Override
     public boolean visit(DB2ValuesStatement x) {
-        print("VALUES ");
+        print0(ucase ? "VALUES " : "values ");
         x.getExpr().accept(this);
         return false;
     }

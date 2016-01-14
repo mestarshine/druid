@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,10 @@
  */
 package com.alibaba.druid.sql.dialect.odps.parser;
 
+import com.alibaba.druid.sql.ast.SQLExpr;
+import com.alibaba.druid.sql.ast.SQLOrderingSpecification;
 import com.alibaba.druid.sql.ast.SQLSetQuantifier;
+import com.alibaba.druid.sql.ast.statement.SQLSelectOrderByItem;
 import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
 import com.alibaba.druid.sql.dialect.odps.ast.OdpsSelectQueryBlock;
 import com.alibaba.druid.sql.parser.SQLExprParser;
@@ -23,7 +26,6 @@ import com.alibaba.druid.sql.parser.SQLSelectParser;
 import com.alibaba.druid.sql.parser.Token;
 
 public class OdpsSelectParser extends SQLSelectParser {
-
     public OdpsSelectParser(SQLExprParser exprParser){
         super(exprParser.getLexer());
         this.exprParser = exprParser;
@@ -76,6 +78,41 @@ public class OdpsSelectParser extends SQLSelectParser {
         parseGroupBy(queryBlock);
 
         queryBlock.setOrderBy(this.exprParser.parseOrderBy());
+        
+        if (lexer.token() == Token.DISTRIBUTE) {
+            lexer.nextToken();
+            accept(Token.BY);
+            SQLExpr distributeBy = this.expr();
+            queryBlock.setDistributeBy(distributeBy);
+            
+
+            if (identifierEquals("SORT")) {
+                lexer.nextToken();
+                accept(Token.BY);
+                
+                for (;;) {
+                    SQLExpr expr = this.expr();
+                    
+                    SQLSelectOrderByItem sortByItem = new SQLSelectOrderByItem(expr);
+                    
+                    if (lexer.token() == Token.ASC) {
+                        sortByItem.setType(SQLOrderingSpecification.ASC);
+                        lexer.nextToken();
+                    } else if (lexer.token() == Token.DESC) {
+                        sortByItem.setType(SQLOrderingSpecification.DESC);
+                        lexer.nextToken();
+                    }
+                    
+                    queryBlock.getSortBy().add(sortByItem);
+                    
+                    if (lexer.token() == Token.COMMA) {
+                        lexer.nextToken();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
 
         if (lexer.token() == Token.LIMIT) {
             lexer.nextToken();

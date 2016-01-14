@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import com.alibaba.druid.sql.ast.expr.SQLBinaryOperator;
 import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
 import com.alibaba.druid.sql.ast.expr.SQLListExpr;
 import com.alibaba.druid.sql.ast.statement.SQLSelect;
-import com.alibaba.druid.sql.ast.statement.SQLSelectGroupByClause;
 import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
 import com.alibaba.druid.sql.ast.statement.SQLTableSource;
 import com.alibaba.druid.sql.ast.statement.SQLUnionOperator;
@@ -36,7 +35,6 @@ import com.alibaba.druid.sql.dialect.oracle.ast.clause.FlashbackQueryClause;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.FlashbackQueryClause.AsOfFlashbackQueryClause;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.FlashbackQueryClause.AsOfSnapshotClause;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.FlashbackQueryClause.VersionsFlashbackQueryClause;
-import com.alibaba.druid.sql.dialect.oracle.ast.clause.GroupingSetExpr;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.ModelClause;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.ModelClause.CellAssignment;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.ModelClause.CellAssignmentItem;
@@ -53,7 +51,6 @@ import com.alibaba.druid.sql.dialect.oracle.ast.clause.OracleWithSubqueryEntry;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.PartitionExtensionClause;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.SampleClause;
 import com.alibaba.druid.sql.dialect.oracle.ast.clause.SearchClause;
-import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleOrderByItem;
 import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleSelect;
 import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleSelectForUpdate;
 import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleSelectHierachicalQueryClause;
@@ -190,11 +187,11 @@ public class OracleSelectParser extends SQLSelectParser {
                     acceptIdentifier("FIRST");
                     accept(Token.BY);
 
-                    searchClause.getItems().add((OracleOrderByItem) exprParser.parseSelectOrderByItem());
+                    searchClause.getItems().add(exprParser.parseSelectOrderByItem());
 
                     while (lexer.token() == (Token.COMMA)) {
                         lexer.nextToken();
-                        searchClause.getItems().add((OracleOrderByItem) exprParser.parseSelectOrderByItem());
+                        searchClause.getItems().add(exprParser.parseSelectOrderByItem());
                     }
 
                     accept(Token.SET);
@@ -558,74 +555,6 @@ public class OracleSelectParser extends SQLSelectParser {
                 acceptIdentifier("REFERENCE");
                 options.add(CellReferenceOption.UniqueDimension);
             }
-        }
-    }
-
-    private void parseGroupBy(OracleSelectQueryBlock queryBlock) {
-        if (lexer.token() == (Token.GROUP)) {
-            lexer.nextToken();
-            accept(Token.BY);
-
-            SQLSelectGroupByClause groupBy = new SQLSelectGroupByClause();
-            for (;;) {
-                if (identifierEquals("GROUPING")) {
-                    GroupingSetExpr groupingSet = new GroupingSetExpr();
-                    lexer.nextToken();
-                    acceptIdentifier("SETS");
-                    accept(Token.LPAREN);
-                    exprParser.exprList(groupingSet.getParameters(), groupingSet);
-                    accept(Token.RPAREN);
-                    groupBy.addItem(groupingSet);
-                } else {
-                    groupBy.addItem(this.exprParser.expr());
-                }
-
-                if (!(lexer.token() == (Token.COMMA))) {
-                    break;
-                }
-
-                lexer.nextToken();
-            }
-
-            if (lexer.token() == (Token.HAVING)) {
-                lexer.nextToken();
-
-                groupBy.setHaving(this.exprParser.expr());
-            }
-
-            queryBlock.setGroupBy(groupBy);
-        } else if (lexer.token() == (Token.HAVING)) {
-            lexer.nextToken();
-
-            SQLSelectGroupByClause groupBy = new SQLSelectGroupByClause();
-            groupBy.setHaving(this.exprParser.expr());
-
-            if (lexer.token() == (Token.GROUP)) {
-                lexer.nextToken();
-                accept(Token.BY);
-
-                for (;;) {
-                    if (identifierEquals("GROUPING")) {
-                        GroupingSetExpr groupingSet = new GroupingSetExpr();
-                        lexer.nextToken();
-                        acceptIdentifier("SETS");
-                        accept(Token.LPAREN);
-                        exprParser.exprList(groupingSet.getParameters(), groupingSet);
-                        accept(Token.RPAREN);
-                        groupBy.addItem(groupingSet);
-                    } else {
-                        groupBy.addItem(this.exprParser.expr());
-                    }
-
-                    if (!(lexer.token() == (Token.COMMA))) {
-                        break;
-                    }
-
-                    lexer.nextToken();
-                }
-            }
-
-            queryBlock.setGroupBy(groupBy);
         }
     }
 

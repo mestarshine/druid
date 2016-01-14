@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import java.util.List;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLOrderBy;
+import com.alibaba.druid.sql.ast.SQLOrderingSpecification;
 import com.alibaba.druid.sql.ast.SQLSetQuantifier;
 import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
 import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
@@ -34,9 +35,10 @@ import com.alibaba.druid.sql.ast.statement.SQLUnionOperator;
 import com.alibaba.druid.sql.ast.statement.SQLUnionQuery;
 import com.alibaba.druid.sql.ast.statement.SQLUnionQueryTableSource;
 import com.alibaba.druid.sql.ast.statement.SQLWithSubqueryClause;
+import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlGroupByItemExpr;
+import com.alibaba.druid.util.JdbcConstants;
 
 public class SQLSelectParser extends SQLParser {
-
     protected SQLExprParser exprParser;
 
     public SQLSelectParser(String sql){
@@ -48,7 +50,7 @@ public class SQLSelectParser extends SQLParser {
     }
 
     public SQLSelectParser(SQLExprParser exprParser){
-        super(exprParser.getLexer());
+        super(exprParser.getLexer(), exprParser.getDbType());
         this.exprParser = exprParser;
     }
 
@@ -257,36 +259,93 @@ public class SQLSelectParser extends SQLParser {
             queryBlock.setWhere(where);
         }
     }
-
+    
     protected void parseGroupBy(SQLSelectQueryBlock queryBlock) {
-        if (lexer.token() == Token.GROUP) {
+        if (lexer.token() == (Token.GROUP)) {
             lexer.nextToken();
             accept(Token.BY);
 
             SQLSelectGroupByClause groupBy = new SQLSelectGroupByClause();
-            while (true) {
-                groupBy.addItem(expr());
-                if (lexer.token() != Token.COMMA) {
+            for (;;) {
+                SQLExpr item = parseGroupByItem();
+                
+                item.setParent(groupBy);
+                groupBy.addItem(item);
+
+                if (!(lexer.token() == (Token.COMMA))) {
                     break;
                 }
 
                 lexer.nextToken();
             }
 
-            if (lexer.token() == Token.HAVING) {
+            if (lexer.token() == (Token.HAVING)) {
                 lexer.nextToken();
 
-                groupBy.setHaving(expr());
+                SQLExpr having = this.exprParser.expr();
+                groupBy.setHaving(having);
             }
+            
+            if (lexer.token() == Token.WITH) {
+                lexer.nextToken();
+                acceptIdentifier("ROLLUP");
 
+                groupBy.setWithRollUp(true);
+            }
+            
             queryBlock.setGroupBy(groupBy);
         } else if (lexer.token() == (Token.HAVING)) {
             lexer.nextToken();
 
             SQLSelectGroupByClause groupBy = new SQLSelectGroupByClause();
-            groupBy.setHaving(this.expr());
+            groupBy.setHaving(this.exprParser.expr());
+
+            if (lexer.token() == (Token.GROUP)) {
+                lexer.nextToken();
+                accept(Token.BY);
+
+                for (;;) {
+                    SQLExpr item = parseGroupByItem();
+                    
+                    item.setParent(groupBy);
+                    groupBy.addItem(item);
+
+                    if (!(lexer.token() == (Token.COMMA))) {
+                        break;
+                    }
+
+                    lexer.nextToken();
+                }
+            }
+            
+            if (lexer.token() == Token.WITH) {
+                lexer.nextToken();
+                acceptIdentifier("ROLLUP");
+
+                groupBy.setWithRollUp(true);
+            }
+            
+            if(JdbcConstants.MYSQL.equals(getDbType()) && lexer.token() == Token.DESC) {
+                lexer.nextToken(); // skip
+            }
+
             queryBlock.setGroupBy(groupBy);
         }
+    }
+
+    protected SQLExpr parseGroupByItem() {
+        SQLExpr item = this.exprParser.expr();
+        
+        if(JdbcConstants.MYSQL.equals(getDbType())) {
+            if (lexer.token() == Token.DESC) {
+                lexer.nextToken(); // skip
+                item =new MySqlGroupByItemExpr(item, SQLOrderingSpecification.DESC);
+            } else if (lexer.token() == Token.ASC) {
+                lexer.nextToken(); // skip
+                item =new MySqlGroupByItemExpr(item, SQLOrderingSpecification.ASC);
+            }
+        }
+        return item;
     }
 
     protected void parseSelectList(SQLSelectQueryBlock queryBlock) {
@@ -355,7 +414,7 @@ public class SQLSelectParser extends SQLParser {
         return tableSrc;
     }
 
-    private void parseTableSourceQueryTableExpr(SQLExprTableSource tableReference) {
+    protected void parseTableSourceQueryTableExpr(SQLExprTableSource tableReference) {
         if (lexer.token() == Token.LITERAL_ALIAS || lexer.token() == Token.IDENTIFIED
             || lexer.token() == Token.LITERAL_CHARS) {
             tableReference.setExpr(this.exprParser.name());

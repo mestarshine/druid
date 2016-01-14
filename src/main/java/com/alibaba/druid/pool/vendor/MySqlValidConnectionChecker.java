@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,24 +35,26 @@ import java.util.Properties;
 
 public class MySqlValidConnectionChecker extends ValidConnectionCheckerAdapter implements ValidConnectionChecker, Serializable {
 
+    public static final int DEFAULT_VALIDATION_QUERY_TIMEOUT = 1000;
+
     private static final long serialVersionUID = 1L;
     private static final Log  LOG              = LogFactory.getLog(MySqlValidConnectionChecker.class);
 
-    private Class<?>          clazz;
-    private Method            ping;
-    private boolean           usePingMethod    = false;
+    private Class<?> clazz;
+    private Method   ping;
+    private boolean  usePingMethod = false;
 
     public MySqlValidConnectionChecker(){
         try {
-            clazz = Utils.loadClass("com.mysql.jdbc.Connection");
-            ping = clazz.getMethod("ping");
+            clazz = Utils.loadClass("com.mysql.jdbc.MySQLConnection");
+            ping = clazz.getMethod("pingInternal", boolean.class, int.class);
             if (ping != null) {
                 usePingMethod = true;
             }
         } catch (Exception e) {
             LOG.warn("Cannot resolve com.mysq.jdbc.Connection.ping method.  Will use 'SELECT 1' instead.", e);
         }
-        
+
         configFromProperties(System.getProperties());
     }
 
@@ -94,8 +96,12 @@ public class MySqlValidConnectionChecker extends ValidConnectionCheckerAdapter i
             }
 
             if (clazz.isAssignableFrom(conn.getClass())) {
+                if (validationQueryTimeout < 0) {
+                    validationQueryTimeout = DEFAULT_VALIDATION_QUERY_TIMEOUT;
+                }
+
                 try {
-                    ping.invoke(conn);
+                    ping.invoke(conn, true, validationQueryTimeout);
                     return true;
                 } catch (InvocationTargetException e) {
                     Throwable cause = e.getCause();

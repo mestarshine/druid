@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ public class DruidPooledConnection extends PoolableWrapper implements javax.sql.
     private boolean                          disable              = false;
     private boolean                          closed               = false;
     private final Thread                     ownerThread;
-
+    private long                             connectedTimeMillis;
     private long                             connectedTimeNano;
     private volatile boolean                 running              = false;
 
@@ -82,6 +82,11 @@ public class DruidPooledConnection extends PoolableWrapper implements javax.sql.
         this.holder = holder;
         dupCloseLogEnable = holder.getDataSource().isDupCloseLogEnable();
         ownerThread = Thread.currentThread();
+        connectedTimeMillis = System.currentTimeMillis();
+    }
+
+    public long getConnectedTimeMillis() {
+        return connectedTimeMillis;
     }
 
     public Thread getOwnerThread() {

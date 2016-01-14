@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,24 @@ import com.alibaba.druid.sql.dialect.mysql.ast.MySqlPrimaryKey;
 import com.alibaba.druid.sql.dialect.mysql.ast.MySqlUnique;
 import com.alibaba.druid.sql.dialect.mysql.ast.MySqlUseIndexHint;
 import com.alibaba.druid.sql.dialect.mysql.ast.MysqlForeignKey;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlCaseStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlCaseStatement.MySqlWhenStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlCursorDeclareStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlDeclareStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlIterateStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlLeaveStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlRepeatStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlSelectIntoStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.clause.MySqlWhileStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlCharExpr;
 import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlExtractExpr;
+import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlGroupByItemExpr;
 import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlIntervalExpr;
 import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlMatchAgainstExpr;
 import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlOutFileExpr;
-import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlSelectGroupByExpr;
 import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlUserName;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.CobarShowStatus;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableAddColumn;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableAlterColumn;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableChangeColumn;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableCharacter;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableDiscardTablespace;
@@ -41,9 +50,7 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableStatemen
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterUserStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAnalyzeStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlBinlogStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlBlockStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCommitStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateIndexStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement.TableSpaceOption;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateUserStatement;
@@ -71,7 +78,6 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlRenameTableStateme
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlReplaceStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlResetStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlRollbackStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectGroupBy;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock.Limit;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSetCharSetStatement;
@@ -117,7 +123,6 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowSlaveHostsStat
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowSlaveStatusStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowStatusStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowTableStatusStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowTablesStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowTriggersStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowVariantsStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlShowWarningsStatement;
@@ -126,6 +131,7 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlTableIndex;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUnionQuery;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUnlockTablesStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUpdateStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUpdateTableSource;
 import com.alibaba.druid.sql.visitor.SQLASTVisitorAdapter;
 
 public class MySqlASTVisitorAdapter extends SQLASTVisitorAdapter implements MySqlASTVisitor {
@@ -281,17 +287,6 @@ public class MySqlASTVisitorAdapter extends SQLASTVisitorAdapter implements MySq
     }
 
     @Override
-    public void endVisit(MySqlSelectGroupBy x) {
-
-    }
-
-    @Override
-    public boolean visit(MySqlSelectGroupBy x) {
-
-        return true;
-    }
-
-    @Override
     public void endVisit(MySqlStartTransactionStatement x) {
 
     }
@@ -331,17 +326,6 @@ public class MySqlASTVisitorAdapter extends SQLASTVisitorAdapter implements MySq
 
     @Override
     public boolean visit(MySqlShowColumnsStatement x) {
-
-        return true;
-    }
-
-    @Override
-    public void endVisit(MySqlShowTablesStatement x) {
-
-    }
-
-    @Override
-    public boolean visit(MySqlShowTablesStatement x) {
 
         return true;
     }
@@ -919,26 +903,6 @@ public class MySqlASTVisitorAdapter extends SQLASTVisitorAdapter implements MySq
     }
 
     @Override
-    public boolean visit(MySqlAlterTableAddColumn x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(MySqlAlterTableAddColumn x) {
-
-    }
-
-    @Override
-    public boolean visit(MySqlCreateIndexStatement x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(MySqlCreateIndexStatement x) {
-
-    }
-
-    @Override
     public boolean visit(MySqlRenameTableStatement.Item x) {
         return true;
     }
@@ -1249,22 +1213,123 @@ public class MySqlASTVisitorAdapter extends SQLASTVisitorAdapter implements MySq
     }
     
     @Override
-    public boolean visit(MySqlSelectGroupByExpr x) {
+    public boolean visit(MySqlGroupByItemExpr x) {
         return true;
     }
 
     @Override
-    public void endVisit(MySqlSelectGroupByExpr x) {
+    public void endVisit(MySqlGroupByItemExpr x) {
 
     }
 
-    @Override
-    public boolean visit(MySqlBlockStatement x) {
+	@Override
+	public boolean visit(MySqlWhileStatement x) {
+		return true;
+	}
+
+	@Override
+	public void endVisit(MySqlWhileStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlCaseStatement x) {
+		return true;
+	}
+
+	@Override
+	public void endVisit(MySqlCaseStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlDeclareStatement x) {
+		return true;
+	}
+
+	@Override
+	public void endVisit(MySqlDeclareStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlSelectIntoStatement x) {
+		return true;
+	}
+
+	@Override
+	public void endVisit(MySqlSelectIntoStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlWhenStatement x) {
+		return true;
+	}
+
+	@Override
+	public void endVisit(MySqlWhenStatement x) {
+		
+	}
+	//add:end
+
+	@Override
+	public boolean visit(MySqlLeaveStatement x) {
+		return false;
+	}
+
+	@Override
+	public void endVisit(MySqlLeaveStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlIterateStatement x) {
+		return false;
+	}
+
+	@Override
+	public void endVisit(MySqlIterateStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlRepeatStatement x) {
+		return false;
+	}
+
+	@Override
+	public void endVisit(MySqlRepeatStatement x) {
+		
+	}
+
+	@Override
+	public boolean visit(MySqlCursorDeclareStatement x) {
+		return false;
+	}
+
+	@Override
+	public void endVisit(MySqlCursorDeclareStatement x) {
+		
+	}
+	
+	@Override
+    public boolean visit(MySqlUpdateTableSource x) {
         return true;
     }
 
     @Override
-    public void endVisit(MySqlBlockStatement x) {
+    public void endVisit(MySqlUpdateTableSource x) {
+
+    }
+
+    @Override
+    public boolean visit(MySqlAlterTableAlterColumn x) {
+        return true;
+    }
+
+    @Override
+    public void endVisit(MySqlAlterTableAlterColumn x) {
         
     }
 

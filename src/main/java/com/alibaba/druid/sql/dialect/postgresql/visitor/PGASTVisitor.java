@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2011 Alibaba Group Holding Ltd.
+ * Copyright 1999-2101 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGInetExpr;
 import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGIntervalExpr;
 import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGLineSegmentsExpr;
 import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGMacAddrExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGParameter;
 import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGPointExpr;
 import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGPolygonExpr;
 import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGTypeCastExpr;
@@ -84,10 +83,6 @@ public interface PGASTVisitor extends SQLASTVisitor {
     void endVisit(PGUpdateStatement x);
 
     boolean visit(PGUpdateStatement x);
-
-    void endVisit(PGParameter x);
-
-    boolean visit(PGParameter x);
 
     void endVisit(PGFunctionTableSource x);
 
