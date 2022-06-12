@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,13 @@
  */
 package com.alibaba.druid.bvt.sql.mysql;
 
-import org.junit.Assert;
-
 import com.alibaba.druid.sql.MysqlTest;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 
 public class MySqlError_test_2 extends MysqlTest {
 
-    public void test_0() throws Exception {
+    public void test_0() {
         String sql = "Describe sdb_goods free_postage";
-        Exception error = null;
 
         MySqlStatementParser parser = new MySqlStatementParser(sql);
         parser.parseStatementList();

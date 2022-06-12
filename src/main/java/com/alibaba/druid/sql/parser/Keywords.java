@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,26 @@
  */
 package com.alibaba.druid.sql.parser;
 
+import com.alibaba.druid.util.FnvHash;
+
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author wenshao<szujobs@hotmail.com>
+ * @author wenshao [szujobs@hotmail.com]
  */
 public class Keywords {
 
     private final Map<String, Token> keywords;
 
+    private long[] hashArray;
+    private Token[] tokens;
+
     public final static Keywords     DEFAULT_KEYWORDS;
+
+    public final static Keywords     SQLITE_KEYWORDS;
+    public final static Keywords     DM_KEYWORDS;
 
     static {
         Map<String, Token> map = new HashMap<String, Token>();
@@ -150,8 +159,30 @@ public class Keywords {
         map.put("FETCH", Token.FETCH);
         map.put("OUT", Token.OUT);
         map.put("INOUT", Token.INOUT);
-        
+
+        map.put("LIMIT", Token.LIMIT);
+
         DEFAULT_KEYWORDS = new Keywords(map);
+
+        {
+            Map<String, Token> sqlitemap = new HashMap<String, Token>();
+
+            sqlitemap.putAll(Keywords.DEFAULT_KEYWORDS.getKeywords());
+
+            sqlitemap.put("LIMIT", Token.LIMIT);
+            SQLITE_KEYWORDS = new Keywords(sqlitemap);
+        }
+
+        {
+            Map<String, Token> sqlitemap = new HashMap<String, Token>();
+
+            sqlitemap.putAll(Keywords.DEFAULT_KEYWORDS.getKeywords());
+
+            sqlitemap.put("MERGE", Token.MERGE);
+            sqlitemap.put("MATCHED", Token.MATCHED);
+            sqlitemap.put("USING", Token.USING);
+            DM_KEYWORDS = new Keywords(sqlitemap);
+        }
     }
 
     public boolean containsValue(Token token) {
@@ -160,11 +191,38 @@ public class Keywords {
 
     public Keywords(Map<String, Token> keywords){
         this.keywords = keywords;
+
+        this.hashArray = new long[keywords.size()];
+        this.tokens = new Token[keywords.size()];
+
+        int index = 0;
+        for (String k : keywords.keySet()) {
+            hashArray[index++] = FnvHash.fnv1a_64_lower(k);
+        }
+        Arrays.sort(hashArray);
+        for (Map.Entry<String, Token> entry : keywords.entrySet()) {
+            long k = FnvHash.fnv1a_64_lower(entry.getKey());
+            index = Arrays.binarySearch(hashArray, k);
+            tokens[index] = entry.getValue();
+        }
     }
 
+public Token getKeyword(long hash) {
+    int index = Arrays.binarySearch(hashArray, hash);
+    if (index < 0) {
+        return null;
+    }
+    return tokens[index];
+}
+
     public Token getKeyword(String key) {
-        key = key.toUpperCase();
-        return keywords.get(key);
+        long k = FnvHash.fnv1a_64_lower(key);
+        int index = Arrays.binarySearch(hashArray, k);
+        if (index < 0) {
+            return null;
+        }
+        return tokens[index];
+//        return keywords.get(key);
     }
 
     public Map<String, Token> getKeywords() {

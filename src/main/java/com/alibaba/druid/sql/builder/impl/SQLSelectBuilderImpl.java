@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,50 +15,32 @@
  */
 package com.alibaba.druid.sql.builder.impl;
 
-import java.util.List;
-
+import com.alibaba.druid.DbType;
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLOrderBy;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.expr.SQLBinaryOperator;
 import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
-import com.alibaba.druid.sql.ast.expr.SQLIntegerExpr;
-import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
-import com.alibaba.druid.sql.ast.statement.SQLSelect;
-import com.alibaba.druid.sql.ast.statement.SQLSelectGroupByClause;
-import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
-import com.alibaba.druid.sql.ast.statement.SQLSelectOrderByItem;
-import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
-import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
-import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.builder.SQLSelectBuilder;
-import com.alibaba.druid.sql.dialect.db2.ast.stmt.DB2SelectQueryBlock;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock.Limit;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleSelect;
-import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock.PGLimit;
-import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerSelect;
-import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerTop;
-import com.alibaba.druid.util.JdbcConstants;
+import com.alibaba.druid.sql.parser.SQLParserUtils;
+
+import java.util.List;
 
 public class SQLSelectBuilderImpl implements SQLSelectBuilder {
 
     private SQLSelectStatement stmt;
-    private String             dbType;
+    private DbType             dbType;
 
-    public SQLSelectBuilderImpl(String dbType){
+    public SQLSelectBuilderImpl(DbType dbType){
         this(new SQLSelectStatement(), dbType);
     }
     
-    public SQLSelectBuilderImpl(String sql, String dbType){
+    public SQLSelectBuilderImpl(String sql, DbType dbType){
         List<SQLStatement> stmtList = SQLUtils.parseStatements(sql, dbType);
 
-        if (stmtList.size() == 0) {
+        if (stmtList.isEmpty()) {
             throw new IllegalArgumentException("not support empty-statement :" + sql);
         }
 
@@ -71,7 +53,7 @@ public class SQLSelectBuilderImpl implements SQLSelectBuilder {
         this.dbType = dbType;
     }
 
-    public SQLSelectBuilderImpl(SQLSelectStatement stmt, String dbType){
+    public SQLSelectBuilderImpl(SQLSelectStatement stmt, DbType dbType){
         this.stmt = stmt;
         this.dbType = dbType;
     }
@@ -197,11 +179,7 @@ public class SQLSelectBuilderImpl implements SQLSelectBuilder {
     @Override
     public SQLSelectBuilderImpl whereAnd(String expr) {
         SQLSelectQueryBlock queryBlock = getQueryBlock();
-
-        SQLExpr exprObj = SQLUtils.toSQLExpr(expr, dbType);
-        SQLExpr newCondition = SQLUtils.buildCondition(SQLBinaryOperator.BooleanAnd, exprObj, false,
-                                                       queryBlock.getWhere());
-        queryBlock.setWhere(newCondition);
+        queryBlock.addWhere(SQLUtils.toSQLExpr(expr, dbType));
 
         return this;
     }
@@ -225,93 +203,16 @@ public class SQLSelectBuilderImpl implements SQLSelectBuilder {
 
     @Override
     public SQLSelectBuilderImpl limit(int rowCount, int offset) {
-        SQLSelectQueryBlock queryBlock = getQueryBlock();
-
-        if (queryBlock instanceof MySqlSelectQueryBlock) {
-            MySqlSelectQueryBlock mySqlQueryBlock = (MySqlSelectQueryBlock) queryBlock;
-
-            Limit limit = new Limit();
-            limit.setRowCount(new SQLIntegerExpr(rowCount));
-            if (offset > 0) {
-                limit.setOffset(new SQLIntegerExpr(offset));
-            }
-
-            mySqlQueryBlock.setLimit(limit);
-
-            return this;
-        }
-
-        if (queryBlock instanceof SQLServerSelectQueryBlock) {
-            SQLServerSelectQueryBlock sqlserverQueryBlock = (SQLServerSelectQueryBlock) queryBlock;
-            if (offset <= 0) {
-                SQLServerTop top = new SQLServerTop();
-                top.setExpr(new SQLIntegerExpr(rowCount));
-                sqlserverQueryBlock.setTop(top);
-            } else {
-                throw new UnsupportedOperationException("not support offset");
-            }
-
-            return this;
-        }
-
-        if (queryBlock instanceof PGSelectQueryBlock) {
-            PGSelectQueryBlock pgQueryBlock = (PGSelectQueryBlock) queryBlock;
-            PGLimit limit = new PGLimit();
-            if (offset > 0) {
-                limit.setOffset(new SQLIntegerExpr(offset));
-            }
-            limit.setRowCount(new SQLIntegerExpr(rowCount));
-            pgQueryBlock.setLimit(limit);
-
-            return this;
-        }
-
-        if (queryBlock instanceof DB2SelectQueryBlock) {
-            DB2SelectQueryBlock db2QueryBlock = (DB2SelectQueryBlock) queryBlock;
-            if (offset <= 0) {
-                SQLExpr rowCountExpr = new SQLIntegerExpr(rowCount);
-                db2QueryBlock.setFirst(rowCountExpr);
-            } else {
-                throw new UnsupportedOperationException("not support offset");
-            }
-
-            return this;
-        }
-
-        if (queryBlock instanceof OracleSelectQueryBlock) {
-            OracleSelectQueryBlock oracleQueryBlock = (OracleSelectQueryBlock) queryBlock;
-            if (offset <= 0) {
-                SQLExpr rowCountExpr = new SQLIntegerExpr(rowCount);
-                SQLExpr newCondition = SQLUtils.buildCondition(SQLBinaryOperator.BooleanAnd, rowCountExpr, false,
-                                                               oracleQueryBlock.getWhere());
-                queryBlock.setWhere(newCondition);
-            } else {
-                throw new UnsupportedOperationException("not support offset");
-            }
-
-            return this;
-        }
-        
-        if (queryBlock instanceof OdpsSelectQueryBlock) {
-            OdpsSelectQueryBlock odpsQueryBlock = (OdpsSelectQueryBlock) queryBlock;
-
-            if (offset > 0) {
-                throw new UnsupportedOperationException("not support offset");
-            }
-
-            odpsQueryBlock.setLimit(new SQLIntegerExpr(rowCount));
-
-            return this;
-        }
-
-        throw new UnsupportedOperationException();
+        getQueryBlock()
+                .limit(rowCount, offset);
+        return this;
     }
 
     protected SQLSelectQueryBlock getQueryBlock() {
         SQLSelect select = getSQLSelect();
         SQLSelectQuery query = select.getQuery();
         if (query == null) {
-            query = createSelectQueryBlock();
+            query = SQLParserUtils.createSelectQueryBlock(dbType);
             select.setQuery(query);
         }
 
@@ -324,34 +225,11 @@ public class SQLSelectBuilderImpl implements SQLSelectBuilder {
     }
 
     protected SQLSelect createSelect() {
-        if (JdbcConstants.SQL_SERVER.equals(dbType)) {
-            return new SQLServerSelect();
-        }
-        if (JdbcConstants.ORACLE.equals(dbType)) {
-            return new OracleSelect();
-        }
-
         return new SQLSelect();
     }
 
     protected SQLSelectQuery createSelectQueryBlock() {
-        if (JdbcConstants.MYSQL.equals(dbType)) {
-            return new MySqlSelectQueryBlock();
-        }
-
-        if (JdbcConstants.POSTGRESQL.equals(dbType)) {
-            return new PGSelectQueryBlock();
-        }
-
-        if (JdbcConstants.SQL_SERVER.equals(dbType)) {
-            return new SQLServerSelectQueryBlock();
-        }
-
-        if (JdbcConstants.ORACLE.equals(dbType)) {
-            return new OracleSelectQueryBlock();
-        }
-
-        return new SQLSelectQueryBlock();
+        return SQLParserUtils.createSelectQueryBlock(dbType);
     }
 
     protected SQLOrderBy createOrderBy() {

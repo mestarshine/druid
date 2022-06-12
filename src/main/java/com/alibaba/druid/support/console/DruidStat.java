@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ public class DruidStat {
        
         if (option.printActiveConn()) {
             List<List<String>> content = (List<List<String>>) invokeService(jmxConn, Option.ACTIVE_CONN);
-			if (content == null || content.size() == 0 ) {
+			if (content == null || content.isEmpty() ) {
 				out.println("目前无活动中的数据库连接");
 			} else {
 				TabledDataPrinter.printActiveConnStack(content, option);

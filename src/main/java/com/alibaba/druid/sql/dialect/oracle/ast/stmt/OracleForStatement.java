@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,54 +15,75 @@
  */
 package com.alibaba.druid.sql.dialect.oracle.ast.stmt;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLName;
 import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.statement.SQLForStatement;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleASTVisitor;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class OracleForStatement extends OracleStatementImpl {
+public class OracleForStatement extends SQLForStatement implements OracleStatement {
 
-    private SQLName            index;
 
-    private SQLExpr            range;
+    private boolean            all;
 
-    private List<SQLStatement> statements = new ArrayList<SQLStatement>();
+    private SQLName           endLabel;
 
     @Override
-    public void accept0(OracleASTVisitor visitor) {
-        if (visitor.visit(this)) {
-            acceptChild(visitor, index);
-            acceptChild(visitor, range);
-            acceptChild(visitor, statements);
+    protected void accept0(SQLASTVisitor v) {
+        if (v instanceof OracleASTVisitor) {
+            accept0((OracleASTVisitor) v);
+            return;
         }
-        visitor.endVisit(this);
+
+        super.accept0(v);
     }
 
-    public SQLName getIndex() {
-        return index;
+    @Override
+    public void accept0(OracleASTVisitor v) {
+        if (v.visit(this)) {
+            acceptChild(v, index);
+            acceptChild(v, range);
+            acceptChild(v, statements);
+        }
+        v.endVisit(this);
     }
 
-    public void setIndex(SQLName index) {
-        this.index = index;
+    public boolean isAll() {
+        return all;
     }
 
-    public SQLExpr getRange() {
-        return range;
+    public void setAll(boolean all) {
+        this.all = all;
     }
 
-    public void setRange(SQLExpr range) {
-        this.range = range;
+    public SQLName getEndLabel() {
+        return endLabel;
     }
 
-    public List<SQLStatement> getStatements() {
-        return statements;
+    public void setEndLabel(SQLName endLabel) {
+        if (endLabel != null) {
+            endLabel.setParent(this);
+        }
+        this.endLabel = endLabel;
     }
 
-    public void setStatements(List<SQLStatement> statements) {
-        this.statements = statements;
+    public OracleForStatement clone() {
+        OracleForStatement x = new OracleForStatement();
+        if (index != null) {
+            x.setIndex(index.clone());
+        }
+        if (range != null) {
+            x.setRange(range.clone());
+        }
+        for (SQLStatement stmt : statements) {
+            SQLStatement stmt2 = stmt.clone();
+            stmt2.setParent(x);
+            x.statements.add(stmt2);
+        }
+        x.all = all;
+        if (endLabel != null) {
+            x.setEndLabel(endLabel.clone());
+        }
+        return x;
     }
-
 }

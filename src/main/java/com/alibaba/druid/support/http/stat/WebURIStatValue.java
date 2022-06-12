@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,16 @@
  */
 package com.alibaba.druid.support.http.stat;
 
-import com.alibaba.druid.support.monitor.annotation.AggregateType;
-import com.alibaba.druid.support.monitor.annotation.MField;
-import com.alibaba.druid.support.monitor.annotation.MTable;
-import com.alibaba.druid.support.profile.ProfileEntryStatValue;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.alibaba.druid.support.monitor.annotation.AggregateType;
+import com.alibaba.druid.support.monitor.annotation.MField;
+import com.alibaba.druid.support.monitor.annotation.MTable;
+import com.alibaba.druid.support.profile.ProfileEntryStatValue;
 
 @MTable(name = "druid_weburi")
 public class WebURIStatValue {
@@ -43,6 +43,12 @@ public class WebURIStatValue {
 
     @MField(aggregate = AggregateType.Sum)
     protected long                      requestTimeNano;
+
+    @MField(aggregate = AggregateType.Max)
+    protected long                      requestTimeNanoMax;
+
+    @MField(aggregate = AggregateType.Last)
+    protected Date                      requestTimeNanoMaxOccurTime;
 
     @MField(aggregate = AggregateType.Sum)
     protected long                      jdbcFetchRowCount;
@@ -177,6 +183,26 @@ public class WebURIStatValue {
         this.requestTimeNano = requestTimeNano;
     }
 
+    public long getRequestTimeNanoMax() {
+        return requestTimeNanoMax;
+    }
+
+    public void setRequestTimeNanoMax(long requestTimeNanoMax) {
+        this.requestTimeNanoMax = requestTimeNanoMax;
+    }
+
+    public Date getRequestTimeNanoMaxOccurTime() {
+        return requestTimeNanoMaxOccurTime;
+    }
+
+    public void setRequestTimeNanoMaxOccurTime(long requestTimeNanoMaxOccurTime) {
+        if (requestTimeNanoMaxOccurTime > 0) {
+            this.requestTimeNanoMaxOccurTime = new Date(requestTimeNanoMaxOccurTime);
+        } else {
+            this.requestTimeNanoMaxOccurTime = null;
+        }
+    }
+
     public long getJdbcFetchRowCount() {
         return jdbcFetchRowCount;
     }
@@ -309,6 +335,10 @@ public class WebURIStatValue {
         return getRequestTimeNano() / (1000 * 1000);
     }
 
+    public long getRequestTimeMillisMax() {
+        return getRequestTimeNanoMax() / (1000 * 1000);
+    }
+
     public Date getLastAccessTime() {
         return lastAccessTime;
     }
@@ -357,6 +387,9 @@ public class WebURIStatValue {
             }
             data.put("Profiles", profileDataList);
         }
+
+        data.put("RequestTimeMillisMax", this.getRequestTimeMillisMax());
+        data.put("RequestTimeMillisMaxOccurTime", this.getRequestTimeNanoMaxOccurTime());
 
         return data;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,15 @@
  */
 package com.alibaba.druid.sql.dialect.oracle.ast.clause;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLOrderBy;
+import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.ast.statement.SQLSelect;
 import com.alibaba.druid.sql.dialect.oracle.ast.OracleSQLObjectImpl;
+import com.alibaba.druid.sql.dialect.oracle.ast.expr.OracleExpr;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleASTVisitor;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ModelClause extends OracleSQLObjectImpl {
 
@@ -391,7 +392,7 @@ public class ModelClause extends OracleSQLObjectImpl {
 
     }
 
-    public static class CellAssignment extends OracleSQLObjectImpl {
+    public static class CellAssignment extends SQLExprImpl implements OracleExpr, SQLReplaceable {
 
         private SQLExpr             measureColumn;
         private final List<SQLExpr> conditions = new ArrayList<SQLExpr>();
@@ -404,8 +405,29 @@ public class ModelClause extends OracleSQLObjectImpl {
             return measureColumn;
         }
 
-        public void setMeasureColumn(SQLExpr measureColumn) {
-            this.measureColumn = measureColumn;
+        public void setMeasureColumn(SQLExpr e) {
+            if (e != null) {
+                e.setParent(this);
+            }
+            this.measureColumn = e;
+        }
+
+        @Override
+        public boolean replace(SQLExpr expr, SQLExpr target) {
+            if (this.measureColumn == expr) {
+                setMeasureColumn(target);
+                return true;
+            }
+
+            for (int i = 0; i < conditions.size(); i++) {
+                if (conditions.get(i) == expr) {
+                    target.setParent(this);
+                    conditions.set(i, target);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         @Override
@@ -417,5 +439,49 @@ public class ModelClause extends OracleSQLObjectImpl {
             visitor.endVisit(this);
         }
 
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            CellAssignment that = (CellAssignment) o;
+
+            if (measureColumn != null ? !measureColumn.equals(that.measureColumn) : that.measureColumn != null)
+                return false;
+            return conditions.equals(that.conditions);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = measureColumn != null ? measureColumn.hashCode() : 0;
+            result = 31 * result + conditions.hashCode();
+            return result;
+        }
+
+        @Override
+        protected void accept0(SQLASTVisitor visitor) {
+            accept0((OracleASTVisitor) visitor);
+        }
+
+        @Override
+        public SQLExpr clone() {
+            CellAssignment x = new CellAssignment();
+            if (measureColumn != null) {
+                x.setMeasureColumn(measureColumn.clone());
+            }
+            return null;
+        }
+
+        @Override
+        public List<SQLObject> getChildren() {
+            List children = new ArrayList();
+            children.add(measureColumn);
+            children.addAll(conditions);
+            return children;
+        }
+    }
+
+    public ModelClause clone() {
+        throw new UnsupportedOperationException();
     }
 }

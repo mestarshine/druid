@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,17 +38,23 @@ public class SQLServerAlterTableTest_11 extends TestCase {
         SQLServerSchemaStatVisitor visitor = new SQLServerSchemaStatVisitor();
         stmt.accept(visitor);
 
-        System.out.println("Tables : " + visitor.getTables());
-        System.out.println("fields : " + visitor.getColumns());
-        System.out.println("coditions : " + visitor.getConditions());
-        System.out.println("orderBy : " + visitor.getOrderByColumns());
+//        System.out.println("Tables : " + visitor.getTables());
+//        System.out.println("fields : " + visitor.getColumns());
+//        System.out.println("coditions : " + visitor.getConditions());
+//        System.out.println("orderBy : " + visitor.getOrderByColumns());
 
-        String output = SQLUtils.toSQLString(stmt, JdbcConstants.SQL_SERVER);
-        Assert.assertEquals("ALTER TABLE dbo.doc_exd" //
-                            + "\n\tWITH NOCHECK ADD CONSTRAINT exd_check CHECK (column_a > 1)", output);
-
-        Assert.assertEquals(1, visitor.getTables().size());
-        Assert.assertEquals(1, visitor.getColumns().size());
+        {
+            String output = SQLUtils.toSQLString(stmt, JdbcConstants.SQL_SERVER);
+            assertEquals("ALTER TABLE dbo.doc_exd" //
+                                + "\n\tWITH NOCHECK ADD CONSTRAINT exd_check CHECK (column_a > 1);", output);
+        }
+        {
+            String output = SQLUtils.toSQLString(stmt, JdbcConstants.SQL_SERVER, SQLUtils.DEFAULT_LCASE_FORMAT_OPTION);
+            assertEquals("alter table dbo.doc_exd" //
+                                + "\n\twith nocheck add constraint exd_check check (column_a > 1);", output);
+        }
+        assertEquals(1, visitor.getTables().size());
+        assertEquals(1, visitor.getColumns().size());
     }
 
 }

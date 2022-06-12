@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,12 +81,17 @@ public class SLF4JImpl implements Log {
     @Override
     public void debug(String msg, Throwable e) {
         debugCount++;
-        log.log(null, callerFQCN, LocationAwareLogger.ERROR_INT, msg, null, e);
+        log.log(null, callerFQCN, LocationAwareLogger.DEBUG_INT, msg, null, e);
     }
 
     @Override
     public boolean isWarnEnabled() {
         return log.isWarnEnabled();
+    }
+    
+    @Override
+    public boolean isErrorEnabled() {
+        return log.isErrorEnabled();
     }
 
     @Override

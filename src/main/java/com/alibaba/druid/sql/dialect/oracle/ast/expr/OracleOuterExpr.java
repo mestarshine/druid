@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,16 @@ package com.alibaba.druid.sql.dialect.oracle.ast.expr;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLExprImpl;
+import com.alibaba.druid.sql.ast.SQLObject;
+import com.alibaba.druid.sql.ast.SQLReplaceable;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleASTVisitor;
+import com.alibaba.druid.sql.dialect.oracle.visitor.OracleOutputVisitor;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class OracleOuterExpr extends SQLExprImpl implements OracleExpr {
+import java.util.Collections;
+import java.util.List;
+
+public class OracleOuterExpr extends SQLExprImpl implements OracleExpr, SQLReplaceable {
 
     private SQLExpr expr;
 
@@ -33,6 +39,14 @@ public class OracleOuterExpr extends SQLExprImpl implements OracleExpr {
         this.expr = expr;
     }
 
+    public OracleOuterExpr clone() {
+        OracleOuterExpr x = new OracleOuterExpr();
+        if (expr != null) {
+            x.setExpr(expr.clone());
+        }
+        return x;
+    }
+
     public SQLExpr getExpr() {
         return this.expr;
     }
@@ -41,14 +55,22 @@ public class OracleOuterExpr extends SQLExprImpl implements OracleExpr {
         this.expr = expr;
     }
 
-    public void output(StringBuffer buf) {
-        this.expr.output(buf);
-        buf.append("(+)");
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (this.expr == expr) {
+            setExpr(target);
+            return true;
+        }
+        return false;
     }
 
     @Override
     protected void accept0(SQLASTVisitor visitor) {
-        this.accept0((OracleASTVisitor) visitor);
+        if (visitor instanceof OracleASTVisitor) {
+            this.accept0((OracleASTVisitor) visitor);
+        } else {
+            acceptChild(visitor, this.expr);
+        }
     }
 
     public void accept0(OracleASTVisitor visitor) {
@@ -57,6 +79,11 @@ public class OracleOuterExpr extends SQLExprImpl implements OracleExpr {
         }
 
         visitor.endVisit(this);
+    }
+
+    @Override
+    public List<SQLObject> getChildren() {
+        return Collections.<SQLObject>singletonList(this.expr);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,15 @@
  */
 package com.alibaba.druid.pool.vendor;
 
-import com.alibaba.druid.pool.ValidConnectionChecker;
-import com.alibaba.druid.pool.ValidConnectionCheckerAdapter;
-import com.alibaba.druid.support.logging.Log;
-import com.alibaba.druid.support.logging.LogFactory;
-import com.alibaba.druid.util.JdbcUtils;
-
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import com.alibaba.druid.pool.ValidConnectionChecker;
+import com.alibaba.druid.pool.ValidConnectionCheckerAdapter;
+import com.alibaba.druid.util.JdbcUtils;
+import com.alibaba.druid.util.StringUtils;
 
 /**
  * A MSSQLValidConnectionChecker.
@@ -32,35 +31,32 @@ import java.sql.Statement;
 public class MSSQLValidConnectionChecker extends ValidConnectionCheckerAdapter implements ValidConnectionChecker, Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    private static final Log  LOG              = LogFactory.getLog(MSSQLValidConnectionChecker.class);
+    private static final String DEFAULT_VALIDATION_QUERY = "SELECT 1";
 
     public MSSQLValidConnectionChecker(){
 
     }
 
-    public boolean isValidConnection(final Connection c, String validateQuery, int validationQueryTimeout) {
-        try {
-            if (c.isClosed()) {
-                return false;
-            }
-        } catch (SQLException ex) {
-            // skip
+    public boolean isValidConnection(final Connection c, String validateQuery, int validationQueryTimeout) throws Exception {
+        if (c.isClosed()) {
             return false;
+        }
+
+        if(StringUtils.isEmpty(validateQuery)) {
+            validateQuery = DEFAULT_VALIDATION_QUERY;
         }
 
         Statement stmt = null;
 
         try {
             stmt = c.createStatement();
-            stmt.setQueryTimeout(validationQueryTimeout);
+            if (validationQueryTimeout > 0) {
+                stmt.setQueryTimeout(validationQueryTimeout);
+            }
             stmt.execute(validateQuery);
             return true;
         } catch (SQLException e) {
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("warning: connection validation failed for current managed connection.");
-            }
-            return false;
+            throw e;
         } finally {
             JdbcUtils.close(stmt);
         }

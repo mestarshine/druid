@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,22 @@ package com.alibaba.druid.wall;
 import java.util.Map;
 import java.util.Properties;
 
-import com.alibaba.druid.pool.DruidDataSourceStatLoggerImpl;
 import com.alibaba.druid.support.json.JSONUtils;
 import com.alibaba.druid.support.logging.Log;
 import com.alibaba.druid.support.logging.LogFactory;
 
 public class WallProviderStatLoggerImpl extends WallProviderStatLoggerAdapter implements WallProviderStatLogger {
 
-    private static Log LOG    = LogFactory.getLog(DruidDataSourceStatLoggerImpl.class);
+    private static Log LOG    = LogFactory.getLog(WallProviderStatLoggerImpl.class);
 
     private Log        logger = LOG;
 
     @Override
     public void configFromProperties(Properties properties) {
+        if (properties == null) {
+            return;
+        }
+
         String property = properties.getProperty("druid.stat.loggerName");
         if (property != null && property.length() > 0) {
             setLoggerName(property);

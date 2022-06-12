@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,15 @@
  */
 package com.alibaba.druid.bvt.sql.mysql;
 
-import java.util.List;
-
-import org.junit.Assert;
-import junit.framework.TestCase;
-
+import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
-import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
 import com.alibaba.druid.sql.parser.SQLStatementParser;
+import com.alibaba.druid.util.JdbcConstants;
+import junit.framework.TestCase;
+import org.junit.Assert;
+
+import java.util.List;
 
 public class LogicalOperatorsTest extends TestCase {
 
@@ -112,7 +112,7 @@ public class LogicalOperatorsTest extends TestCase {
 
         String text = output(stmtList);
 
-        Assert.assertEquals("SELECT !1 + 1;", text);
+        Assert.assertEquals("SELECT (!1) + 1;", text);
     }
 
     public void test_8() throws Exception {
@@ -181,14 +181,50 @@ public class LogicalOperatorsTest extends TestCase {
         Assert.assertEquals("SELECT 1 XOR 1 XOR 1;", text);
     }
 
+
+
+    public void test14(){
+        String sql = "SELECT ~1;";
+
+        SQLStatementParser parser = new MySqlStatementParser(sql);
+        List<SQLStatement> stmtList = parser.parseStatementList();
+
+        String text = output(stmtList);
+
+        Assert.assertEquals("SELECT ~1;", text);
+
+
+        sql = "SELECT ~(1+1);";
+
+        parser = new MySqlStatementParser(sql);
+        stmtList = parser.parseStatementList();
+
+        text = output(stmtList);
+
+        Assert.assertEquals("SELECT ~(1 + 1);", text);
+    }
+
+    public void test15(){
+        String sql = "SELECT * FROM SUNTEST WHERE ~ID = 1;";
+
+        SQLStatementParser parser = new MySqlStatementParser(sql);
+        List<SQLStatement> stmtList = parser.parseStatementList();
+
+        String text = SQLUtils.toSQLString(stmtList, JdbcConstants.MYSQL);
+        Assert.assertEquals("SELECT *\n" +
+                "FROM SUNTEST\n" +
+                "WHERE (~ID) = 1;", text);
+
+
+        sql = "SELECT * FROM SUNTEST WHERE ~(ID = 1);";
+
+        parser = new MySqlStatementParser(sql);
+        stmtList = parser.parseStatementList();
+
+        text = SQLUtils.toSQLString(stmtList, JdbcConstants.MYSQL);
+        Assert.assertEquals("SELECT *\nFROM SUNTEST\nWHERE ~(ID = 1);", text);
+    }
     private String output(List<SQLStatement> stmtList) {
-        StringBuilder out = new StringBuilder();
-
-        for (SQLStatement stmt : stmtList) {
-            stmt.accept(new MySqlOutputVisitor(out));
-            out.append(";");
-        }
-
-        return out.toString();
+        return SQLUtils.toSQLString(stmtList, JdbcConstants.MYSQL);
     }
 }

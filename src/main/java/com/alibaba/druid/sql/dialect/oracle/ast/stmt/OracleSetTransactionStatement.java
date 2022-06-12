@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@
 package com.alibaba.druid.sql.dialect.oracle.ast.stmt;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.dialect.oracle.ast.OracleSQLObjectImpl;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleASTVisitor;
 
-public class OracleSetTransactionStatement extends OracleSQLObjectImpl implements OracleStatement {
+public class OracleSetTransactionStatement extends OracleStatementImpl implements OracleStatement {
 
     private boolean readOnly = false;
-    private String  dbType;
+    private boolean write = false;
 
     private SQLExpr name;
 
@@ -50,12 +49,11 @@ public class OracleSetTransactionStatement extends OracleSQLObjectImpl implement
         this.readOnly = readOnly;
     }
 
-    public String getDbType() {
-        return dbType;
+    public boolean isWrite() {
+        return write;
     }
-    
-    public void setDbType(String dbType) {
-        this.dbType = dbType;
+
+    public void setWrite(boolean write) {
+        this.write = write;
     }
-    
 }

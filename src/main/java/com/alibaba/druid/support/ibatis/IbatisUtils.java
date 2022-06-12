@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,15 @@
  */
 package com.alibaba.druid.support.ibatis;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import com.alibaba.druid.support.logging.Log;
 import com.alibaba.druid.support.logging.LogFactory;
 import com.ibatis.sqlmap.client.SqlMapExecutor;
 import com.ibatis.sqlmap.engine.impl.SqlMapClientImpl;
 import com.ibatis.sqlmap.engine.impl.SqlMapSessionImpl;
 import com.ibatis.sqlmap.engine.scope.SessionScope;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 public class IbatisUtils {
     private static Log     LOG               = LogFactory.getLog(IbatisUtils.class);

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
  */
 package com.alibaba.druid.bvt.sql.mysql.visitor;
 
-import java.util.List;
-
-import org.junit.Assert;
-import junit.framework.TestCase;
-
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
+import junit.framework.TestCase;
+import org.junit.Assert;
+
+import java.util.List;
 
 public class MySqlSchemaStatVisitorTest5 extends TestCase {
 
@@ -35,12 +34,14 @@ public class MySqlSchemaStatVisitorTest5 extends TestCase {
 //		sql = "select columnName from table1 where id in (select id from table3 where name = ?)";
 		MySqlStatementParser parser = new MySqlStatementParser(sql);
 		List<SQLStatement> statementList = parser.parseStatementList();
-		SQLStatement statemen = statementList.get(0);
+		SQLStatement stmt = statementList.get(0);
 
 		Assert.assertEquals(1, statementList.size());
 
+		System.out.println(stmt);
+
 		MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
-		statemen.accept(visitor);
+		stmt.accept(visitor);
 
 		System.out.println(sql);
 		System.out.println("Tables : " + visitor.getTables());
@@ -49,7 +50,7 @@ public class MySqlSchemaStatVisitorTest5 extends TestCase {
 		Assert.assertEquals(4, visitor.getTables().size());
 		Assert.assertEquals(true, visitor.containsTable("view_position_info"));
 
-		Assert.assertEquals(7, visitor.getColumns().size());
+		Assert.assertEquals(11, visitor.getColumns().size());
 		// Assert.assertEquals(true, visitor.getFields().contains(new
 		// Column("users", "id")));
 		// Assert.assertEquals(true, visitor.getFields().contains(new

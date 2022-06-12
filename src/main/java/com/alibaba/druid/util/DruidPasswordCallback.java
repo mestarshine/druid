@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
  */
 package com.alibaba.druid.util;
 
-import javax.security.auth.callback.PasswordCallback;
 import java.util.Properties;
+
+import javax.security.auth.callback.PasswordCallback;
 
 public class DruidPasswordCallback extends PasswordCallback {
 

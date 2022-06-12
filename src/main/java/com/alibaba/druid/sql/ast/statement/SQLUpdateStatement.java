@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,82 @@
  */
 package com.alibaba.druid.sql.ast.statement;
 
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.*;
+import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
+import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExprGroup;
+import com.alibaba.druid.sql.ast.expr.SQLBinaryOperator;
+import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.ast.SQLStatementImpl;
-import com.alibaba.druid.sql.visitor.SQLASTVisitor;
-
-public class SQLUpdateStatement extends SQLStatementImpl {
+public class SQLUpdateStatement extends SQLStatementImpl implements SQLReplaceable {
+    protected SQLWithSubqueryClause with; // for pg
 
     protected final List<SQLUpdateSetItem> items = new ArrayList<SQLUpdateSetItem>();
     protected SQLExpr                      where;
+    protected SQLTableSource               from;
 
     protected SQLTableSource               tableSource;
+    protected List<SQLExpr>                returning;
+
+    protected List<SQLAssignItem>          partitions;
+
+    // for mysql
+    protected SQLOrderBy orderBy;
 
     public SQLUpdateStatement(){
 
     }
+
+    public void cloneTo(SQLUpdateStatement x) {
+        x.dbType = dbType;
+        x.afterSemi = afterSemi;
+
+        if (with != null) {
+            x.setWith(with.clone());
+            x.with.setParent(x);
+        }
+
+        if (where != null) {
+            x.where = where.clone();
+            x.where.setParent(x);
+        }
+        if (tableSource != null) {
+            x.setTableSource(tableSource.clone());
+            x.tableSource.setParent(x);
+        }
+
+        for (SQLUpdateSetItem item : items) {
+            SQLUpdateSetItem clone = item.clone();
+            clone.setParent(x);
+            x.getItems().add(clone);
+        }
+
+        if (returning != null) {
+            for (SQLExpr item : returning) {
+                SQLExpr clone = item.clone();
+                clone.setParent(x);
+                x.getReturning().add(clone);
+            }
+        }
+
+        if (orderBy != null) {
+            x.orderBy = orderBy.clone();
+            x.orderBy.setParent(x);
+        }
+    }
+
+    public SQLUpdateStatement clone() {
+        SQLUpdateStatement x = new SQLUpdateStatement();
+        cloneTo(x);
+        return x;
+    }
     
-    public SQLUpdateStatement(String dbType){
+    public SQLUpdateStatement(DbType dbType){
         super (dbType);
     }
 
@@ -55,10 +111,24 @@ public class SQLUpdateStatement extends SQLStatementImpl {
 
     public SQLName getTableName() {
         if (tableSource instanceof SQLExprTableSource) {
-            SQLExprTableSource exprTableSource = (SQLExprTableSource) tableSource;
-            return (SQLName) exprTableSource.getExpr();
+            return ((SQLExprTableSource) tableSource).getName();
+        }
+
+        if (tableSource instanceof SQLJoinTableSource) {
+            SQLTableSource left = ((SQLJoinTableSource) tableSource).getLeft();
+            if (left instanceof SQLExprTableSource) {
+                return ((SQLExprTableSource) left).getName();
+            }
         }
         return null;
+    }
+
+    public List<SQLAssignItem> getPartitions() {
+        return partitions;
+    }
+
+    public void setPartitions(List<SQLAssignItem> partitions) {
+        this.partitions = partitions;
     }
 
     public SQLExpr getWhere() {
@@ -81,33 +151,236 @@ public class SQLUpdateStatement extends SQLStatementImpl {
         item.setParent(this);
     }
 
-    @Override
-    public void output(StringBuffer buf) {
-        buf.append("UPDATE ");
-
-        this.tableSource.output(buf);
-
-        buf.append(" SET ");
-        for (int i = 0, size = items.size(); i < size; ++i) {
-            if (i != 0) {
-                buf.append(", ");
-            }
-            items.get(i).output(buf);
+    public List<SQLExpr> getReturning() {
+        if (returning == null) {
+            returning = new ArrayList<SQLExpr>(2);
         }
 
-        if (this.where != null) {
-            buf.append(" WHERE ");
-            this.where.output(buf);
+        return returning;
+    }
+
+    public SQLTableSource getFrom() {
+        return from;
+    }
+
+    public void setFrom(SQLTableSource from) {
+        if (from != null) {
+            from.setParent(this);
         }
+        this.from = from;
     }
 
     @Override
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
-            acceptChild(visitor, tableSource);
-            acceptChild(visitor, items);
-            acceptChild(visitor, where);
+            acceptChild(visitor);
         }
         visitor.endVisit(this);
+    }
+
+    protected void acceptChild(SQLASTVisitor visitor)
+    {
+        if (with != null) {
+            with.accept(visitor);
+        }
+
+        if (tableSource != null) {
+            tableSource.accept(visitor);
+        }
+
+        if (from != null) {
+            from.accept(visitor);
+        }
+
+        for (int i = 0; i < items.size(); i++) {
+            SQLUpdateSetItem item = items.get(i);
+            if (item != null) {
+                item.accept(visitor);
+            }
+        }
+
+        if (where != null) {
+            where.accept(visitor);
+        }
+
+        if (orderBy != null) {
+            orderBy.accept(visitor);
+        }
+    }
+
+    public List<SQLObject> getChildren() {
+        List<SQLObject> children = new ArrayList<SQLObject>();
+        if (tableSource != null) {
+            children.add(tableSource);
+        }
+        if (from != null) {
+            children.add(from);
+        }
+        children.addAll(this.items);
+        if (where != null) {
+            children.add(where);
+        }
+        if (orderBy != null) {
+            children.add(orderBy);
+        }
+        return children;
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (where == expr) {
+            setWhere(target);
+            return true;
+        }
+
+        if (returning != null) {
+            for (int i = 0; i < returning.size(); i++) {
+                if (returning.get(i) == expr) {
+                    target.setParent(this);
+                    returning.set(i, target);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+    public SQLOrderBy getOrderBy() {
+        return orderBy;
+    }
+
+    public void setOrderBy(SQLOrderBy orderBy) {
+        if (orderBy != null) {
+            orderBy.setParent(this);
+        }
+        this.orderBy = orderBy;
+    }
+
+    public SQLWithSubqueryClause getWith() {
+        return with;
+    }
+
+    public void setWith(SQLWithSubqueryClause with) {
+        if (with != null) {
+            with.setParent(this);
+        }
+        this.with = with;
+    }
+
+    public void addCondition(String conditionSql) {
+        if (conditionSql == null || conditionSql.length() == 0) {
+            return;
+        }
+
+        SQLExpr condition = SQLUtils.toSQLExpr(conditionSql, dbType);
+        addCondition(condition);
+    }
+
+    public void addCondition(SQLExpr expr) {
+        if (expr == null) {
+            return;
+        }
+
+        this.setWhere(SQLBinaryOpExpr.and(where, expr));
+    }
+
+    public boolean removeCondition(String conditionSql) {
+        if (conditionSql == null || conditionSql.length() == 0) {
+            return false;
+        }
+
+        SQLExpr condition = SQLUtils.toSQLExpr(conditionSql, dbType);
+
+        return removeCondition(condition);
+    }
+
+    public boolean removeCondition(SQLExpr condition) {
+        if (condition == null) {
+            return false;
+        }
+
+        if (where instanceof SQLBinaryOpExprGroup) {
+            SQLBinaryOpExprGroup group = (SQLBinaryOpExprGroup) where;
+
+            int removedCount = 0;
+            List<SQLExpr> items = group.getItems();
+            for (int i = items.size() - 1; i >= 0; i--) {
+                if (items.get(i).equals(condition)) {
+                    items.remove(i);
+                    removedCount++;
+                }
+            }
+            if (items.isEmpty()) {
+                where = null;
+            }
+
+            return removedCount > 0;
+        }
+
+        if (where instanceof SQLBinaryOpExpr) {
+            SQLBinaryOpExpr binaryOpWhere = (SQLBinaryOpExpr) where;
+            SQLBinaryOperator operator = binaryOpWhere.getOperator();
+            if (operator == SQLBinaryOperator.BooleanAnd || operator == SQLBinaryOperator.BooleanOr) {
+                List<SQLExpr> items = SQLBinaryOpExpr.split(binaryOpWhere);
+
+                int removedCount = 0;
+                for (int i = items.size() - 1; i >= 0; i--) {
+                    SQLExpr item = items.get(i);
+                    if (item.equals(condition)) {
+                        if (SQLUtils.replaceInParent(item, null)) {
+                            removedCount++;
+                        }
+                    }
+                }
+
+                return removedCount > 0;
+            }
+        }
+
+        if (condition.equals(where)) {
+            where = null;
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SQLUpdateStatement that = (SQLUpdateStatement) o;
+
+        if (with != null ? !with.equals(that.with) : that.with != null) return false;
+        if (!items.equals(that.items)) return false;
+        if (where != null ? !where.equals(that.where) : that.where != null) return false;
+        if (from != null ? !from.equals(that.from) : that.from != null) return false;
+        if (tableSource != null ? !tableSource.equals(that.tableSource) : that.tableSource != null) return false;
+        if (returning != null ? !returning.equals(that.returning) : that.returning != null) return false;
+        return orderBy != null ? orderBy.equals(that.orderBy) : that.orderBy == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = with != null ? with.hashCode() : 0;
+        result = 31 * result + items.hashCode();
+        result = 31 * result + (where != null ? where.hashCode() : 0);
+        result = 31 * result + (from != null ? from.hashCode() : 0);
+        result = 31 * result + (tableSource != null ? tableSource.hashCode() : 0);
+        result = 31 * result + (returning != null ? returning.hashCode() : 0);
+        result = 31 * result + (orderBy != null ? orderBy.hashCode() : 0);
+        return result;
+    }
+
+    public boolean addWhere(SQLExpr where) {
+        if (where == null) {
+            return false;
+        }
+
+        this.addCondition(where);
+        return true;
     }
 }

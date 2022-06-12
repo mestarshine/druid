@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,19 @@
  */
 package com.alibaba.druid.sql.ast.expr;
 
+import com.alibaba.druid.FastsqlException;
+import com.alibaba.druid.sql.ast.SQLDataType;
+import com.alibaba.druid.sql.ast.SQLDataTypeImpl;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLExprImpl;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLBooleanExpr extends SQLExprImpl implements SQLExpr, SQLLiteralExpr {
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+
+public final class SQLBooleanExpr extends SQLExprImpl implements SQLExpr, SQLLiteralExpr, SQLValuableExpr {
+    public static final SQLDataType DATA_TYPE = new SQLDataTypeImpl(SQLDataType.Constants.BOOLEAN);
 
     private boolean value;
 
@@ -31,7 +39,11 @@ public class SQLBooleanExpr extends SQLExprImpl implements SQLExpr, SQLLiteralEx
         this.value = value;
     }
 
-    public boolean getValue() {
+    public boolean getBooleanValue() {
+        return value;
+    }
+
+    public Boolean getValue() {
         return value;
     }
 
@@ -46,9 +58,12 @@ public class SQLBooleanExpr extends SQLExprImpl implements SQLExpr, SQLLiteralEx
         visitor.endVisit(this);
     }
 
-    public void output(StringBuffer buf) {
-        buf.append("x");
-        buf.append(value ? "TRUE" : "FALSE");
+    public void output(Appendable buf) {
+        try {
+            buf.append(value ? "true" : "false");
+        } catch (IOException ex) {
+            throw new FastsqlException("output error", ex);
+        }
     }
 
     @Override
@@ -77,4 +92,20 @@ public class SQLBooleanExpr extends SQLExprImpl implements SQLExpr, SQLLiteralEx
         return true;
     }
 
+    public SQLDataType computeDataType() {
+        return DATA_TYPE;
+    }
+
+    public SQLBooleanExpr clone() {
+        return new SQLBooleanExpr(value);
+    }
+
+    @Override
+    public List getChildren() {
+        return Collections.emptyList();
+    }
+
+    public static enum Type {
+        ON_OFF
+    }
 }

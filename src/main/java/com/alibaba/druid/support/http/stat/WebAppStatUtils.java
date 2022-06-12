@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ public class WebAppStatUtils {
         
         try {
             Method method = webStat.getClass().getMethod("getSessionStatData", String.class);
-            Object obj = method.invoke(webStat);
+            Object obj = method.invoke(webStat, sessionId);
             return (Map<String, Object>) obj;
         } catch (Exception e) {
             LOG.error("getSessionStatData error", e);
@@ -98,7 +98,7 @@ public class WebAppStatUtils {
         
         try {
             Method method = webStat.getClass().getMethod("getURIStatData", String.class);
-            Object obj = method.invoke(webStat);
+            Object obj = method.invoke(webStat, uri);
             return (Map<String, Object>) obj;
         } catch (Exception e) {
             LOG.error("getURIStatData error", e);

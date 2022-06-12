@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@ import com.alibaba.druid.sql.ast.SQLName;
 import com.alibaba.druid.sql.ast.SQLStatementImpl;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLAlterViewRenameStatement extends SQLStatementImpl {
+public class SQLAlterViewRenameStatement extends SQLStatementImpl implements SQLAlterStatement {
 
     private SQLName name;
     private SQLName to;
+
+    private SQLName changeOwnerTo;
 
     public SQLName getName() {
         return name;
@@ -39,11 +41,22 @@ public class SQLAlterViewRenameStatement extends SQLStatementImpl {
         return to;
     }
 
-    public void setTo(SQLName to) {
-        if (to != null) {
-            to.setParent(this);
+    public void setTo(SQLName x) {
+        if (x != null) {
+            x.setParent(this);
         }
-        this.to = to;
+        this.to = x;
+    }
+
+    public SQLName getChangeOwnerTo() {
+        return changeOwnerTo;
+    }
+
+    public void setChangeOwnerTo(SQLName x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.changeOwnerTo = x;
     }
 
     @Override
@@ -51,6 +64,7 @@ public class SQLAlterViewRenameStatement extends SQLStatementImpl {
         if (visitor.visit(this)) {
             acceptChild(visitor, name);
             acceptChild(visitor, to);
+            acceptChild(visitor, changeOwnerTo);
         }
         visitor.endVisit(this);
     }

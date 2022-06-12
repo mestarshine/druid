@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
  */
 package com.alibaba.druid.support.jconsole;
 
-import com.alibaba.druid.support.jconsole.model.ColumnGroup;
-import com.alibaba.druid.support.jconsole.model.DruidTableModel;
-import com.alibaba.druid.support.jconsole.model.GroupableTableHeader;
-import com.alibaba.druid.support.jconsole.model.GroupableTableHeaderUI;
-import com.alibaba.druid.support.jconsole.model.RowHeaderTable;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map.Entry;
 
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
@@ -28,12 +29,12 @@ import javax.swing.SwingConstants;
 import javax.swing.border.BevelBorder;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map.Entry;
+
+import com.alibaba.druid.support.jconsole.model.ColumnGroup;
+import com.alibaba.druid.support.jconsole.model.DruidTableModel;
+import com.alibaba.druid.support.jconsole.model.GroupableTableHeader;
+import com.alibaba.druid.support.jconsole.model.GroupableTableHeaderUI;
+import com.alibaba.druid.support.jconsole.model.RowHeaderTable;
 
 /**
  * 请求地址 /sql.json
@@ -82,7 +83,7 @@ import java.util.Map.Entry;
   }
   </pre>
   
-  @author yunnysunny<yunnysunny@gmail.com>
+  @author yunnysunny [yunnysunny@gmail.com]
  * */
 public class DruidSQLPanel extends DruidPanel {
 

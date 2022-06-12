@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,62 +15,143 @@
  */
 package com.alibaba.druid.util;
 
+import com.alibaba.druid.DbType;
+
 public interface JdbcConstants {
 
-    public static final String JTDS              = "jtds";
+    DbType JTDS                       = DbType.jtds;
 
-    public static final String MOCK              = "mock";
+    String MOCK                       = "mock";
 
-    public static final String HSQL              = "hsql";
+    DbType HSQL                       = DbType.hsql;
 
-    public static final String DB2               = "db2";
+    DbType DB2                        = DbType.db2;
 
-    public static final String DB2_DRIVER        = "COM.ibm.db2.jdbc.app.DB2Driver";
+    String DB2_DRIVER                 = "com.ibm.db2.jcc.DB2Driver"; // Type4
+    String DB2_DRIVER2                = "COM.ibm.db2.jdbc.app.DB2Driver"; // Type2
+    String DB2_DRIVER3                = "COM.ibm.db2.jdbc.net.DB2Driver"; // Type3
 
-    public static final String POSTGRESQL        = "postgresql";
-    public static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
+    DbType POSTGRESQL                 = DbType.postgresql;
+    String POSTGRESQL_DRIVER          = "org.postgresql.Driver";
 
-    public static final String SYBASE            = "sybase";
+    DbType SYBASE                     = DbType.sybase;
 
-    public static final String SQL_SERVER        = "sqlserver";
-    public static final String SQL_SERVER_DRIVER = "com.microsoft.jdbc.sqlserver.SQLServerDriver";
+    DbType SQL_SERVER                 = DbType.sqlserver;
+    String SQL_SERVER_DRIVER          = "com.microsoft.jdbc.sqlserver.SQLServerDriver";
+    String SQL_SERVER_DRIVER_SQLJDBC4 = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+    String SQL_SERVER_DRIVER_JTDS     = "net.sourceforge.jtds.jdbc.Driver";
 
-    public static final String ORACLE            = "oracle";
-    public static final String ORACLE_DRIVER     = "oracle.jdbc.OracleDriver";
+    DbType ORACLE                     = DbType.oracle;
+    String ORACLE_DRIVER              = "oracle.jdbc.OracleDriver";
+    String ORACLE_DRIVER2             = "oracle.jdbc.driver.OracleDriver";
 
-    public static final String ALI_ORACLE        = "AliOracle";
-    public static final String ALI_ORACLE_DRIVER = "com.alibaba.jdbc.AlibabaDriver";
+    DbType ALI_ORACLE                 = DbType.ali_oracle;
+    String ALI_ORACLE_DRIVER          = "com.alibaba.jdbc.AlibabaDriver";
 
-    public static final String MYSQL             = "mysql";
-    public static final String MYSQL_DRIVER      = "com.mysql.jdbc.Driver";
+    DbType MYSQL                      = DbType.mysql;
+    String MYSQL_DRIVER               = "com.mysql.jdbc.Driver";
+    String MYSQL_DRIVER_6             = "com.mysql.cj.jdbc.Driver";
+    String MYSQL_DRIVER_REPLICATE     = "com.mysql.jdbc.";
 
-    public static final String MARIADB           = "mariadb";
-    public static final String MARIADB_DRIVER    = "org.mariadb.jdbc.Driver";
+    String MARIADB                    = "mariadb";
+    String MARIADB_DRIVER             = "org.mariadb.jdbc.Driver";
 
-    public static final String DERBY             = "derby";
+    DbType TIDB                       = DbType.tidb;
+    String TIDB_DRIVER                = "io.tidb.bigdata.jdbc.TiDBDriver";
 
-    public static final String HBASE             = "hbase";
+    DbType DERBY                      = DbType.derby;
 
-    public static final String HIVE              = "hive";
-    public static final String HIVE_DRIVER       = "org.apache.hive.jdbc.HiveDriver";
+    String HBASE                      = "hbase";
 
-    public static final String H2                = "h2";
-    public static final String H2_DRIVER         = "org.h2.Driver";
+    DbType HIVE                       = DbType.hive;
+    String HIVE_DRIVER                = "org.apache.hive.jdbc.HiveDriver";
 
-    public static final String DM                = "dm";
-    public static final String DM_DRIVER         = "dm.jdbc.driver.DmDriver";
-    
-    public static final String KINGBASE          = "kingbase";
-    public static final String KINGBASE_DRIVER   = "com.kingbase.Driver";
+    DbType H2                         = DbType.h2;
+    String H2_DRIVER                  = "org.h2.Driver";
+
+    DbType DM                         = DbType.dm;
+    String DM_DRIVER                  = "dm.jdbc.driver.DmDriver";
+
+    DbType KINGBASE                   = DbType.kingbase;
+    String KINGBASE_DRIVER            = "com.kingbase.Driver";
+    String KINGBASE8_DRIVER           = "com.kingbase8.Driver";
+
+    DbType GBASE                      = DbType.gbase;
+    String GBASE_DRIVER               = "com.gbase.jdbc.Driver";
+
+    DbType XUGU                       = DbType.xugu;
+    String XUGU_DRIVER                = "com.xugu.cloudjdbc.Driver";
+
+    DbType OCEANBASE                  = DbType.oceanbase;
+    DbType OCEANBASE_ORACLE           = DbType.oceanbase_oracle;
+    String OCEANBASE_DRIVER           = "com.alipay.oceanbase.jdbc.Driver";
+    String OCEANBASE_DRIVER2          = "com.oceanbase.jdbc.Driver";
+
+    DbType INFORMIX                   = DbType.informix;
     
     /**
      * 阿里云odps
      */
-    public static final String ODPS              = "odps";
+    DbType ODPS                       = DbType.odps;
+    String ODPS_DRIVER                = "com.aliyun.odps.jdbc.OdpsDriver";
+
+    String TERADATA                   = "teradata";
+    String TERADATA_DRIVER            = "com.teradata.jdbc.TeraDriver";
 
     /**
      * Log4JDBC
      */
-    public static final String LOG4JDBC          = "log4jdbc";
-    public static final String LOG4JDBC_DRIVER   = "net.sf.log4jdbc.DriverSpy";
+    String LOG4JDBC                   = "log4jdbc";
+    String LOG4JDBC_DRIVER            = "net.sf.log4jdbc.DriverSpy";
+
+    String PHOENIX                    = "phoenix";
+    String PHOENIX_DRIVER             = "org.apache.phoenix.jdbc.PhoenixDriver";
+    DbType ENTERPRISEDB               = DbType.edb;
+    String ENTERPRISEDB_DRIVER        = "com.edb.Driver";
+
+    String KYLIN                      = "kylin";
+    String KYLIN_DRIVER               = "org.apache.kylin.jdbc.Driver";
+
+
+    String SQLITE                     = "sqlite";
+    String SQLITE_DRIVER              = "org.sqlite.JDBC";
+
+    String ALIYUN_ADS                 = "aliyun_ads";
+    DbType ALIYUN_DRDS                = DbType.drds;
+
+    String PRESTO                     = "presto";
+    String PRESTO_DRIVER              = "com.facebook.presto.jdbc.PrestoDriver";
+
+    String TRINO                      = "trino";
+    String TRINO_DRIVER               = "io.trino.jdbc.TrinoDriver";
+
+    String ELASTIC_SEARCH             = "elastic_search";
+    
+    String ELASTIC_SEARCH_DRIVER      = "com.alibaba.xdriver.elastic.jdbc.ElasticDriver";
+
+    DbType CLICKHOUSE                 = DbType.clickhouse;
+    String CLICKHOUSE_DRIVER          = "ru.yandex.clickhouse.ClickHouseDriver";
+
+    String KDB                        = "kdb";
+    String KDB_DRIVER                 = "com.inspur.jdbc.KdDriver";
+
+    /**
+     * Aliyun PolarDB
+     */
+    DbType POLARDB                    = DbType.polardb;
+    String POLARDB_DRIVER             = "com.aliyun.polardb.Driver";
+    /**
+     * GreenPlum
+     */
+    DbType GREENPLUM                    = DbType.greenplum;
+    String GREENPLUM_DRIVER             = "com.pivotal.jdbc.GreenplumDriver";
+
+    /**
+     * oscar
+     */
+    DbType OSCAR                      = DbType.oscar;
+    String OSCAR_DRIVER               = "com.oscar.Driver";
+
+    DbType TYDB                      = DbType.tydb;
+    String TYDB_DRIVER               = "com.dbcp.jdbc.Driver";
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,7 +141,7 @@ public class SQLMergeTest extends TestCase {
                     print(")");
                 }
 
-                if (x.getValuesList().size() != 0) {
+                if (!x.getValuesList().isEmpty()) {
                     print(" VALUES ");
                     int size = x.getValuesList().size();
                     if (size == 0) {
@@ -160,7 +160,7 @@ public class SQLMergeTest extends TestCase {
                     x.getQuery().accept(this);
                 }
 
-                if (x.getDuplicateKeyUpdate().size() != 0) {
+                if (!x.getDuplicateKeyUpdate().isEmpty()) {
                     print(" ON DUPLICATE KEY UPDATE ");
                     printAndAccept(x.getDuplicateKeyUpdate(), ", ");
                 }

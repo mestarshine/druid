@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
  */
 package com.alibaba.druid.proxy.jdbc;
 
-import com.alibaba.druid.filter.FilterChainImpl;
-import com.alibaba.druid.filter.stat.StatFilter;
-
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -28,7 +25,6 @@ import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
@@ -39,8 +35,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+import com.alibaba.druid.filter.FilterChainImpl;
+import com.alibaba.druid.filter.stat.StatFilter;
+
 /**
- * @author wenshao<szujobs@hotmail.com>
+ * @author wenshao [szujobs@hotmail.com]
  */
 public class ConnectionProxyImpl extends WrapperProxyImpl implements ConnectionProxy {
 
@@ -497,23 +496,35 @@ public class ConnectionProxyImpl extends WrapperProxyImpl implements ConnectionP
     }
 
     public void setSchema(String schema) throws SQLException {
-        throw new SQLFeatureNotSupportedException();
+        FilterChainImpl chain = createChain();
+        chain.connection_setSchema(this, schema);
+        recycleFilterChain(chain);
     }
 
     public String getSchema() throws SQLException {
-        throw new SQLFeatureNotSupportedException();
+        FilterChainImpl chain = createChain();
+        String schema = chain.connection_getSchema(this);
+        recycleFilterChain(chain);
+        return schema;
     }
 
     public void abort(Executor executor) throws SQLException {
-        throw new SQLFeatureNotSupportedException();
+        FilterChainImpl chain = createChain();
+        chain.connection_abort(this, executor);
+        recycleFilterChain(chain);
     }
 
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
-        throw new SQLFeatureNotSupportedException();
+        FilterChainImpl chain = createChain();
+        chain.connection_setNetworkTimeout(this, executor, milliseconds);
+        recycleFilterChain(chain);
     }
 
     public int getNetworkTimeout() throws SQLException {
-        throw new SQLFeatureNotSupportedException();
+        FilterChainImpl chain = createChain();
+        int networkTimeout = chain.connection_getNetworkTimeout(this);
+        recycleFilterChain(chain);
+        return networkTimeout;
     }
 
     @SuppressWarnings("unchecked")

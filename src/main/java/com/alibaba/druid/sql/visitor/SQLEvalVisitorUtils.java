@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,12 @@
  */
 package com.alibaba.druid.sql.visitor;
 
-import com.alibaba.druid.DruidRuntimeException;
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.FastsqlException;
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLObject;
-import com.alibaba.druid.sql.ast.expr.SQLBinaryExpr;
-import com.alibaba.druid.sql.ast.expr.SQLBetweenExpr;
-import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
-import com.alibaba.druid.sql.ast.expr.SQLBinaryOperator;
-import com.alibaba.druid.sql.ast.expr.SQLCaseExpr;
-import com.alibaba.druid.sql.ast.expr.SQLCharExpr;
-import com.alibaba.druid.sql.ast.expr.SQLHexExpr;
-import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
-import com.alibaba.druid.sql.ast.expr.SQLInListExpr;
-import com.alibaba.druid.sql.ast.expr.SQLMethodInvokeExpr;
-import com.alibaba.druid.sql.ast.expr.SQLNullExpr;
-import com.alibaba.druid.sql.ast.expr.SQLNumericLiteralExpr;
-import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
-import com.alibaba.druid.sql.ast.expr.SQLUnaryExpr;
-import com.alibaba.druid.sql.ast.expr.SQLUnaryOperator;
-import com.alibaba.druid.sql.ast.expr.SQLVariantRefExpr;
+import com.alibaba.druid.sql.ast.expr.*;
 import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
 import com.alibaba.druid.sql.ast.statement.SQLSelect;
 import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
@@ -43,37 +29,8 @@ import com.alibaba.druid.sql.dialect.db2.visitor.DB2EvalVisitor;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlEvalVisitorImpl;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleEvalVisitor;
 import com.alibaba.druid.sql.dialect.postgresql.visitor.PGEvalVisitor;
-import com.alibaba.druid.sql.dialect.sqlserver.visitor.SQLServerEvalVisitor;
-import com.alibaba.druid.sql.visitor.functions.Ascii;
-import com.alibaba.druid.sql.visitor.functions.Bin;
-import com.alibaba.druid.sql.visitor.functions.BitLength;
-import com.alibaba.druid.sql.visitor.functions.Char;
-import com.alibaba.druid.sql.visitor.functions.Concat;
-import com.alibaba.druid.sql.visitor.functions.Elt;
-import com.alibaba.druid.sql.visitor.functions.Function;
-import com.alibaba.druid.sql.visitor.functions.Greatest;
-import com.alibaba.druid.sql.visitor.functions.Hex;
-import com.alibaba.druid.sql.visitor.functions.If;
-import com.alibaba.druid.sql.visitor.functions.Insert;
-import com.alibaba.druid.sql.visitor.functions.Instr;
-import com.alibaba.druid.sql.visitor.functions.Isnull;
-import com.alibaba.druid.sql.visitor.functions.Lcase;
-import com.alibaba.druid.sql.visitor.functions.Least;
-import com.alibaba.druid.sql.visitor.functions.Left;
-import com.alibaba.druid.sql.visitor.functions.Length;
-import com.alibaba.druid.sql.visitor.functions.Locate;
-import com.alibaba.druid.sql.visitor.functions.Lpad;
-import com.alibaba.druid.sql.visitor.functions.Ltrim;
-import com.alibaba.druid.sql.visitor.functions.Now;
-import com.alibaba.druid.sql.visitor.functions.OneParamFunctions;
-import com.alibaba.druid.sql.visitor.functions.Reverse;
-import com.alibaba.druid.sql.visitor.functions.Right;
-import com.alibaba.druid.sql.visitor.functions.Substring;
-import com.alibaba.druid.sql.visitor.functions.Trim;
-import com.alibaba.druid.sql.visitor.functions.Ucase;
-import com.alibaba.druid.sql.visitor.functions.Unhex;
+import com.alibaba.druid.sql.visitor.functions.*;
 import com.alibaba.druid.util.HexBin;
-import com.alibaba.druid.util.JdbcUtils;
 import com.alibaba.druid.util.Utils;
 import com.alibaba.druid.wall.spi.WallVisitorUtils;
 import com.alibaba.druid.wall.spi.WallVisitorUtils.WallConditionContext;
@@ -82,14 +39,10 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
+import static com.alibaba.druid.sql.visitor.SQLEvalVisitor.*;
 import static com.alibaba.druid.sql.visitor.SQLEvalVisitor.EVAL_ERROR;
 import static com.alibaba.druid.sql.visitor.SQLEvalVisitor.EVAL_EXPR;
 import static com.alibaba.druid.sql.visitor.SQLEvalVisitor.EVAL_VALUE;
@@ -103,17 +56,17 @@ public class SQLEvalVisitorUtils {
         registerBaseFunctions();
     }
 
-    public static Object evalExpr(String dbType, String expr, Object... parameters) {
+    public static Object evalExpr(DbType dbType, String expr, Object... parameters) {
         SQLExpr sqlExpr = SQLUtils.toSQLExpr(expr, dbType);
         return eval(dbType, sqlExpr, parameters);
     }
 
-    public static Object evalExpr(String dbType, String expr, List<Object> parameters) {
+    public static Object evalExpr(DbType dbType, String expr, List<Object> parameters) {
         SQLExpr sqlExpr = SQLUtils.toSQLExpr(expr);
         return eval(dbType, sqlExpr, parameters);
     }
 
-    public static Object eval(String dbType, SQLObject sqlObject, Object... parameters) {
+    public static Object eval(DbType dbType, SQLObject sqlObject, Object... parameters) {
         Object value = eval(dbType, sqlObject, Arrays.asList(parameters));
 
         if (value == EVAL_VALUE_NULL) {
@@ -128,58 +81,59 @@ public class SQLEvalVisitorUtils {
             return ((SQLNumericLiteralExpr) sqlObject).getNumber();
         }
 
-        return sqlObject.getAttributes().get(EVAL_VALUE);
+        return sqlObject.getAttribute(EVAL_VALUE);
     }
 
-    public static Object eval(String dbType, SQLObject sqlObject, List<Object> parameters) {
+    public static Object eval(DbType dbType, SQLObject sqlObject, List<Object> parameters) {
         return eval(dbType, sqlObject, parameters, true);
     }
 
-    public static Object eval(String dbType, SQLObject sqlObject, List<Object> parameters, boolean throwError) {
+    public static Object eval(DbType dbType, SQLObject sqlObject, List<Object> parameters, boolean throwError) {
         SQLEvalVisitor visitor = createEvalVisitor(dbType);
         visitor.setParameters(parameters);
-        sqlObject.accept(visitor);
 
-        Object value = getValue(sqlObject);
-        if (value == null) {
-            if (throwError && !sqlObject.getAttributes().containsKey(EVAL_VALUE)) {
-                throw new DruidRuntimeException("eval error : " + SQLUtils.toSQLString(sqlObject, dbType));
+        Object value;
+        if (sqlObject instanceof SQLValuableExpr) {
+            value = ((SQLValuableExpr) sqlObject).getValue();
+        } else {
+            sqlObject.accept(visitor);
+
+            value = getValue(sqlObject);
+
+            if (value == null) {
+                if (throwError && !sqlObject.containsAttribute(EVAL_VALUE)) {
+                    throw new FastsqlException("eval error : " + SQLUtils.toSQLString(sqlObject, dbType));
+                }
             }
         }
 
         return value;
     }
 
-    public static SQLEvalVisitor createEvalVisitor(String dbType) {
-        if (JdbcUtils.MYSQL.equals(dbType)) {
-            return new MySqlEvalVisitorImpl();
+    public static SQLEvalVisitor createEvalVisitor(DbType dbType) {
+        if (dbType == null) {
+            dbType = DbType.other;
         }
 
-        if (JdbcUtils.MARIADB.equals(dbType)) {
-            return new MySqlEvalVisitorImpl();
+        switch (dbType) {
+            case mysql:
+            case mariadb:
+            case tidb:
+            case h2:
+                return new MySqlEvalVisitorImpl();
+            case oracle:
+                return new OracleEvalVisitor();
+            case postgresql:
+            case edb:
+                return new PGEvalVisitor();
+            case sqlserver:
+            case jtds:
+                return new PGEvalVisitor();
+            case db2:
+                return new DB2EvalVisitor();
+            default:
+                return new SQLEvalVisitorImpl();
         }
-
-        if (JdbcUtils.H2.equals(dbType)) {
-            return new MySqlEvalVisitorImpl();
-        }
-
-        if (JdbcUtils.ORACLE.equals(dbType) || JdbcUtils.ALI_ORACLE.equals(dbType)) {
-            return new OracleEvalVisitor();
-        }
-
-        if (JdbcUtils.POSTGRESQL.equals(dbType)) {
-            return new PGEvalVisitor();
-        }
-
-        if (JdbcUtils.SQL_SERVER.equals(dbType) || JdbcUtils.JTDS.equals(dbType)) {
-            return new SQLServerEvalVisitor();
-        }
-
-        if (JdbcUtils.DB2.equals(dbType)) {
-            return new DB2EvalVisitor();
-        }
-
-        return new SQLEvalVisitorImpl();
     }
 
     static void registerBaseFunctions() {
@@ -217,6 +171,9 @@ public class SQLEvalVisitorUtils {
         functions.put("least", Least.instance);
         functions.put("isnull", Isnull.instance);
         functions.put("if", If.instance);
+        functions.put("to_date", ToDate.instance);
+        functions.put("to_char", ToChar.instance);
+        functions.put("dateadd", DateAdd.instance);
 
         functions.put("md5", OneParamFunctions.instance);
         functions.put("bit_count", OneParamFunctions.instance);
@@ -236,19 +193,19 @@ public class SQLEvalVisitorUtils {
         if (function != null) {
             Object result = function.eval(visitor, x);
 
-            if (result != SQLEvalVisitor.EVAL_ERROR) {
-                x.getAttributes().put(EVAL_VALUE, result);
+            if (result != SQLEvalVisitor.EVAL_ERROR && result != null) {
+                x.putAttribute(EVAL_VALUE, result);
             }
             return false;
         }
 
         if ("mod".equals(methodName)) {
-            if (x.getParameters().size() != 2) {
+            if (x.getArguments().size() != 2) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
-            SQLExpr param1 = x.getParameters().get(1);
+            SQLExpr param0 = x.getArguments().get(0);
+            SQLExpr param1 = x.getArguments().get(1);
             param0.accept(visitor);
             param1.accept(visitor);
 
@@ -258,18 +215,22 @@ public class SQLEvalVisitorUtils {
                 return false;
             }
 
-            int intValue0 = castToInteger(param0Value);
-            int intValue1 = castToInteger(param1Value);
+            long intValue0 = castToLong(param0Value);
+            long intValue1 = castToLong(param1Value);
 
-            int result = intValue0 % intValue1;
-
-            x.putAttribute(EVAL_VALUE, result);
+            long result = intValue0 % intValue1;
+            if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
+                int intResult = (int) result;
+                x.putAttribute(EVAL_VALUE, intResult);
+            } else {
+                x.putAttribute(EVAL_VALUE, result);
+            }
         } else if ("abs".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -288,11 +249,11 @@ public class SQLEvalVisitorUtils {
 
             x.putAttribute(EVAL_VALUE, result);
         } else if ("acos".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -309,11 +270,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("asin".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -330,11 +291,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("atan".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -351,12 +312,12 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("atan2".equals(methodName)) {
-            if (x.getParameters().size() != 2) {
+            if (x.getArguments().size() != 2) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
-            SQLExpr param1 = x.getParameters().get(1);
+            SQLExpr param0 = x.getArguments().get(0);
+            SQLExpr param1 = x.getArguments().get(1);
             param0.accept(visitor);
             param1.accept(visitor);
 
@@ -376,11 +337,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("ceil".equals(methodName) || "ceiling".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -389,19 +350,18 @@ public class SQLEvalVisitorUtils {
             }
 
             double doubleValue = castToDouble(paramValue);
-            int result = (int) Math.ceil(doubleValue);
-
-            if (Double.isNaN(result)) {
+            if (Double.isNaN(doubleValue)) {
                 x.putAttribute(EVAL_VALUE, null);
             } else {
+                int result = (int) Math.ceil(doubleValue);
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("cos".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -418,11 +378,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("sin".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -439,11 +399,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("log".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -460,11 +420,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("log10".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -481,11 +441,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("tan".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -502,11 +462,11 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("sqrt".equals(methodName)) {
-            if (x.getParameters().size() != 1) {
+            if (x.getArguments().size() != 1) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
+            SQLExpr param0 = x.getArguments().get(0);
             param0.accept(visitor);
 
             Object paramValue = param0.getAttributes().get(EVAL_VALUE);
@@ -523,12 +483,12 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, result);
             }
         } else if ("power".equals(methodName) || "pow".equals(methodName)) {
-            if (x.getParameters().size() != 2) {
+            if (x.getArguments().size() != 2) {
                 return false;
             }
 
-            SQLExpr param0 = x.getParameters().get(0);
-            SQLExpr param1 = x.getParameters().get(1);
+            SQLExpr param0 = x.getArguments().get(0);
+            SQLExpr param1 = x.getArguments().get(1);
             param0.accept(visitor);
             param1.accept(visitor);
 
@@ -551,8 +511,8 @@ public class SQLEvalVisitorUtils {
             x.putAttribute(EVAL_VALUE, Math.PI);
         } else if ("rand".equals(methodName)) {
             x.putAttribute(EVAL_VALUE, Math.random());
-        } else if ("chr".equals(methodName) && x.getParameters().size() == 1) {
-            SQLExpr first = x.getParameters().get(0);
+        } else if ("chr".equals(methodName) && x.getArguments().size() == 1) {
+            SQLExpr first = x.getArguments().get(0);
             Object firstResult = getValue(first);
             if (firstResult instanceof Number) {
                 int intValue = ((Number) firstResult).intValue();
@@ -583,14 +543,14 @@ public class SQLEvalVisitorUtils {
     }
 
     public static boolean visit(SQLEvalVisitor visitor, SQLBinaryExpr x) {
-        String text = x.getValue();
+        String text = x.getText();
 
         long[] words = new long[text.length() / 64 + 1];
-        for (int i = 0; i < text.length(); ++i) {
+        for (int i = text.length()-1; i >= 0 ; --i) {
             char ch = text.charAt(i);
             if (ch == '1') {
                 int wordIndex = i >> 6;
-                words[wordIndex] |= (1L << i);
+                words[wordIndex] |= (1L << (text.length() - 1 - i));
             }
         }
 
@@ -602,7 +562,7 @@ public class SQLEvalVisitorUtils {
             byte[] bytes = new byte[words.length * 8];
 
             for (int i = 0; i < words.length; ++i) {
-                Utils.putLong(bytes, i * 8, words[i]);
+                Utils.putLong(bytes, (words.length-1-i) * 8, words[i]);
             }
 
             val = new BigInteger(bytes);
@@ -906,6 +866,7 @@ public class SQLEvalVisitorUtils {
             if (leftEvalExpr != null && leftEvalExpr.equals(rightEvalExpr)) {
                 switch (x.getOperator()) {
                     case Like:
+                    case SoudsLike:
                     case Equality:
                     case GreaterThanOrEqual:
                     case LessThanOrEqual:
@@ -914,6 +875,7 @@ public class SQLEvalVisitorUtils {
                         x.putAttribute(EVAL_VALUE, Boolean.TRUE);
                         return false;
                     case NotEqual:
+                    case LessThanOrGreater:
                     case NotLike:
                     case GreaterThan:
                     case LessThan:
@@ -1004,6 +966,7 @@ public class SQLEvalVisitorUtils {
                 x.putAttribute(EVAL_VALUE, value);
                 break;
             case NotEqual:
+            case LessThanOrGreater:
                 value = !eq(leftValue, rightValue);
                 x.putAttribute(EVAL_VALUE, value);
                 break;
@@ -1100,7 +1063,7 @@ public class SQLEvalVisitorUtils {
     }
 
     public static boolean visit(SQLEvalVisitor visitor, SQLNumericLiteralExpr x) {
-        x.getAttributes().put(EVAL_VALUE, x.getNumber());
+        x.putAttribute(EVAL_VALUE, x.getNumber());
         return false;
     }
 
@@ -1113,10 +1076,14 @@ public class SQLEvalVisitorUtils {
 
         int varIndex = x.getIndex();
 
-        if (varIndex != -1 && visitor.getParameters().size() > varIndex) {
+        List<Object> parameters = visitor.getParameters();
+        if (varIndex != -1
+                && parameters != null
+                && parameters.size() > varIndex)
+        {
             boolean containsValue = attributes.containsKey(EVAL_VALUE);
             if (!containsValue) {
-                Object value = visitor.getParameters().get(varIndex);
+                Object value = parameters.get(varIndex);
                 if (value == null) {
                     value = EVAL_VALUE_NULL;
                 }
@@ -1230,7 +1197,7 @@ public class SQLEvalVisitorUtils {
             return ((Number) val).intValue();
         }
 
-        throw new DruidRuntimeException("cast error");
+        throw new FastsqlException("cast error");
     }
 
     @SuppressWarnings("rawtypes")
@@ -1369,7 +1336,7 @@ public class SQLEvalVisitorUtils {
             return castToDate((String) val);
         }
 
-        throw new DruidRuntimeException("can cast to date");
+        throw new FastsqlException("can cast to date");
     }
 
     public static Date castToDate(String text) {
@@ -1388,7 +1355,7 @@ public class SQLEvalVisitorUtils {
         try {
             return new SimpleDateFormat(format).parse(text);
         } catch (ParseException e) {
-            throw new DruidRuntimeException("format : " + format + ", value : " + text, e);
+            throw new FastsqlException("rowFormat : " + format + ", value : " + text, e);
         }
     }
 
@@ -1574,7 +1541,7 @@ public class SQLEvalVisitorUtils {
             return false;
         }
 
-        if (b == null || a == EVAL_VALUE_NULL) {
+        if (b == null || b == EVAL_VALUE_NULL) {
             return true;
         }
 

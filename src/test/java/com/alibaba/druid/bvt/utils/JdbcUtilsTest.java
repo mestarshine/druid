@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,14 @@
  */
 package com.alibaba.druid.bvt.utils;
 
-import java.util.HashMap;
+import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.alibaba.druid.mock.MockConnection;
+import com.alibaba.druid.mock.MockStatement;
 import org.junit.Assert;
 import junit.framework.TestCase;
 
@@ -50,7 +54,7 @@ public class JdbcUtilsTest extends TestCase {
             Assert.assertEquals(0, list.size());
         }
         {
-            Map<String, Object> data = new HashMap<String, Object>();
+            Map<String, Object> data = new LinkedHashMap<String, Object>();
             data.put("id", 123);
             data.put("name", "高傲的羊");
             JdbcUtils.insertToTable(dataSource, "user", data);
@@ -78,5 +82,14 @@ public class JdbcUtilsTest extends TestCase {
             List<Map<String, Object>> list = JdbcUtils.executeQuery(dataSource, "select * from user");
             Assert.assertEquals(0, list.size());
         }
-    }   
+    }
+
+    public void test_close() throws Exception {
+        MockStatement stmt = new MockStatement(new MockConnection()) {
+            public void close() throws SQLException {
+                throw new SQLRecoverableException("Closed Connection");
+            }
+        };
+        JdbcUtils.close(stmt);
+    }
 }

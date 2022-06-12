@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.alibaba.druid.bvt.sql;
 
 import java.util.List;
 
+import com.alibaba.druid.DbType;
 import org.junit.Assert;
 import junit.framework.TestCase;
 
@@ -31,7 +32,7 @@ public class CreateDatabaseTest extends TestCase {
         List<SQLStatement> stmtList = SQLUtils.toStatementList(sql, null);
         SQLStatement stmt = stmtList.get(0);
         
-        Assert.assertEquals("CREATE DATABASE mydb", SQLUtils.toSQLString(stmt, null));
+        Assert.assertEquals("CREATE DATABASE mydb", SQLUtils.toSQLString(stmt, (DbType) null));
     }
     
     public void test_mysql () throws Exception {

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,18 @@
  */
 package com.alibaba.druid.sql.ast.expr;
 
-import java.io.Serializable;
-
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLExprImpl;
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.ast.statement.SQLSelect;
+import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
+import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable {
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
+
+public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable, SQLReplaceable {
 
     private static final long serialVersionUID = 1L;
     private boolean           not              = false;
@@ -30,8 +34,36 @@ public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable {
 
     public SQLSelect          subQuery;
 
+    // for ads query hint
+    public SQLCommentHint hint;
+
+    // for clickhouse
+    private boolean global;
+
     public SQLInSubQueryExpr(){
 
+    }
+
+    public SQLInSubQueryExpr(SQLSelect select){
+        setSubQuery(select);
+    }
+
+    public SQLInSubQueryExpr(SQLExpr expr, SQLSelectQueryBlock queryBlock){
+        setExpr(expr);
+        setSubQuery(new SQLSelect(queryBlock));
+    }
+
+    public SQLInSubQueryExpr clone() {
+        SQLInSubQueryExpr x = new SQLInSubQueryExpr();
+        x.not = not;
+        x.global = global;
+        if (expr != null) {
+            x.setExpr(expr.clone());
+        }
+        if (subQuery != null) {
+            x.setSubQuery(subQuery.clone());
+        }
+        return x;
     }
 
     public boolean isNot() {
@@ -47,37 +79,41 @@ public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable {
     }
 
     public void setExpr(SQLExpr expr) {
+        if (expr != null) {
+            expr.setParent(this);
+        }
         this.expr = expr;
     }
 
-    public SQLInSubQueryExpr(SQLSelect select){
-
-        this.subQuery = select;
-    }
 
     public SQLSelect getSubQuery() {
         return this.subQuery;
     }
 
-    public void setSubQuery(SQLSelect subQuery) {
-        if (subQuery != null) {
-            subQuery.setParent(this);
+    public void setSubQuery(SQLSelect x) {
+        if (x != null) {
+            x.setParent(this);
         }
-        this.subQuery = subQuery;
-    }
-
-    public void output(StringBuffer buf) {
-        this.subQuery.output(buf);
+        this.subQuery = x;
     }
 
     @Override
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
-            acceptChild(visitor,this.expr);
-            acceptChild(visitor, this.subQuery);
+            if (this.expr != null) {
+                this.expr.accept(visitor);
+            }
+
+            if (this.subQuery != null) {
+                this.subQuery.accept(visitor);
+            }
         }
 
         visitor.endVisit(this);
+    }
+
+    public List<SQLObject> getChildren() {
+        return Arrays.<SQLObject>asList(this.expr, this.subQuery);
     }
 
     @Override
@@ -86,6 +122,7 @@ public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable {
         int result = 1;
         result = prime * result + ((expr == null) ? 0 : expr.hashCode());
         result = prime * result + (not ? 1231 : 1237);
+        result = prime * result + (global ? 1231 : 1237);
         result = prime * result + ((subQuery == null) ? 0 : subQuery.hashCode());
         return result;
     }
@@ -112,6 +149,9 @@ public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable {
         if (not != other.not) {
             return false;
         }
+        if (global != other.global) {
+            return false;
+        }
         if (subQuery == null) {
             if (other.subQuery != null) {
                 return false;
@@ -122,4 +162,32 @@ public class SQLInSubQueryExpr extends SQLExprImpl implements Serializable {
         return true;
     }
 
+    public SQLDataType computeDataType() {
+        return SQLBooleanExpr.DATA_TYPE;
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (this.expr == expr) {
+            setExpr(target);
+            return true;
+        }
+        return false;
+    }
+
+    public SQLCommentHint getHint() {
+        return hint;
+    }
+
+    public void setHint(SQLCommentHint hint) {
+        this.hint = hint;
+    }
+
+    public boolean isGlobal() {
+        return global;
+    }
+
+    public void setGlobal(boolean global) {
+        this.global = global;
+    }
 }

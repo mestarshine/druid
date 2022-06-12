@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,16 @@
  */
 package com.alibaba.druid.support.ibatis;
 
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+
 import com.ibatis.common.util.PaginatedList;
 import com.ibatis.sqlmap.client.SqlMapExecutor;
 import com.ibatis.sqlmap.client.event.RowHandler;
 import com.ibatis.sqlmap.engine.execution.BatchException;
 import com.ibatis.sqlmap.engine.impl.ExtendedSqlMapClient;
 import com.ibatis.sqlmap.engine.impl.SqlMapClientImpl;
-
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
 
 @SuppressWarnings("deprecation")
 public class SqlMapExecutorWrapper implements SqlMapExecutor {

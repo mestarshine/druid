@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,30 @@
 package com.alibaba.druid.sql.ast.statement;
 
 public enum SQLObjectType {
-    TABLE, FUNCTION, PROCEDURE, USER, DATABASE, //
-    ROLE, PROJECT, PACKAGE, RESOURCE, INSTANCE, JOB, VOLUME, OfflineModel, XFLOW // for odps
+    TABLE("TABLE"), // 
+    FUNCTION("FUNCTION"), // 
+    PROCEDURE("PROCEDURE"), // 
+    USER("USER"), //
+    DATABASE("DATABASE"), //
+    SCHEMA("SCHEMA"), //
+    ROLE("ROLE"), //
+    PROJECT("PROJECT"), // 
+    PACKAGE("PACKAGE"), // 
+    RESOURCE("RESOURCE"), // 
+    INSTANCE("INSTANCE"), // 
+    JOB("JOB"), // 
+    VOLUME("VOLUME"), // 
+    OfflineModel("OFFLINEMODEL"), // 
+    SYSTEM("SYSTEM"), //
+    GLOBAL("GLOBAL"), //
+    XFLOW("XFLOW") // for odps
+    ;
+    
+    public final String name;
+    public final String name_lcase;
+    
+    SQLObjectType(String name) {
+        this.name = name;
+        this.name_lcase = name.toLowerCase();
+    }
 }

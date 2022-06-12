@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,30 +15,35 @@
  */
 package com.alibaba.druid.sql.dialect.oracle.ast.stmt;
 
-import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.dialect.oracle.ast.OracleSQLObjectImpl;
-import com.alibaba.druid.sql.dialect.oracle.ast.clause.OracleStorageClause;
+import com.alibaba.druid.sql.ast.SQLObject;
+import com.alibaba.druid.sql.ast.SQLPartition;
+import com.alibaba.druid.sql.ast.statement.SQLCreateIndexStatement;
+import com.alibaba.druid.sql.ast.statement.SQLCreateStatement;
+import com.alibaba.druid.sql.dialect.oracle.ast.OracleSQLObject;
+import com.alibaba.druid.sql.dialect.oracle.ast.OracleSegmentAttributesImpl;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleASTVisitor;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class OracleUsingIndexClause extends OracleSQLObjectImpl {
+import java.util.ArrayList;
+import java.util.List;
 
-    private SQLName             index;
-    private SQLName             tablespace;
+public class OracleUsingIndexClause extends OracleSegmentAttributesImpl implements OracleSQLObject {
 
-    private SQLExpr             ptcfree;
-    private SQLExpr             pctused;
-    private SQLExpr             initrans;
-    private SQLExpr             maxtrans;
-
+    private SQLObject           index;
     private Boolean             enable            = null;
 
     private boolean             computeStatistics = false;
+    private boolean             reverse;
 
-    private OracleStorageClause storage;
+    private List<SQLPartition> localPartitionIndex = new ArrayList<SQLPartition>();
 
     public OracleUsingIndexClause(){
 
+    }
+
+    protected void accept0(SQLASTVisitor visitor) {
+        accept0((OracleASTVisitor) visitor);
     }
 
     @Override
@@ -49,14 +54,6 @@ public class OracleUsingIndexClause extends OracleSQLObjectImpl {
             acceptChild(visitor, storage);
         }
         visitor.endVisit(this);
-    }
-
-    public OracleStorageClause getStorage() {
-        return storage;
-    }
-
-    public void setStorage(OracleStorageClause storage) {
-        this.storage = storage;
     }
 
     public Boolean getEnable() {
@@ -75,52 +72,57 @@ public class OracleUsingIndexClause extends OracleSQLObjectImpl {
         this.computeStatistics = computeStatistics;
     }
 
-    public SQLName getIndex() {
+    public SQLObject getIndex() {
         return index;
     }
 
-    public void setIndex(SQLName index) {
-        this.index = index;
+    public void setIndex(SQLName x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.index = x;
     }
 
-    public SQLName getTablespace() {
-        return tablespace;
+    public void setIndex(SQLCreateIndexStatement x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.index = x;
     }
 
-    public void setTablespace(SQLName tablespace) {
-        this.tablespace = tablespace;
+    public boolean isReverse() {
+        return reverse;
     }
 
-    public SQLExpr getPtcfree() {
-        return ptcfree;
+    public void setReverse(boolean reverse) {
+        this.reverse = reverse;
     }
 
-    public void setPtcfree(SQLExpr ptcfree) {
-        this.ptcfree = ptcfree;
+    public List<SQLPartition> getLocalPartitionIndex() {
+        return localPartitionIndex;
     }
 
-    public SQLExpr getPctused() {
-        return pctused;
+    public void cloneTo(OracleUsingIndexClause x) {
+        super.cloneTo(x);
+        if (index != null) {
+            SQLObject idx = index.clone();
+            idx.setParent(x);
+            x.index = idx;
+        }
+        x.enable = enable;
+        x.computeStatistics = computeStatistics;
+        x.reverse = reverse;
+
+        for (SQLPartition p : localPartitionIndex) {
+            SQLPartition p2 = p.clone();
+            p2.setParent(x);
+            x.localPartitionIndex.add(p2);
+        }
     }
 
-    public void setPctused(SQLExpr pctused) {
-        this.pctused = pctused;
+    public OracleUsingIndexClause clone() {
+        OracleUsingIndexClause x = new OracleUsingIndexClause();
+        cloneTo(x);
+        return x;
     }
-
-    public SQLExpr getInitrans() {
-        return initrans;
-    }
-
-    public void setInitrans(SQLExpr initrans) {
-        this.initrans = initrans;
-    }
-
-    public SQLExpr getMaxtrans() {
-        return maxtrans;
-    }
-
-    public void setMaxtrans(SQLExpr maxtrans) {
-        this.maxtrans = maxtrans;
-    }
-
 }

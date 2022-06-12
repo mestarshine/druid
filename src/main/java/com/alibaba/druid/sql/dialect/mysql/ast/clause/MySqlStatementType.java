@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,14 @@
 package com.alibaba.druid.sql.dialect.mysql.ast.clause;
 
 import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.statement.SQLBlockStatement;
-import com.alibaba.druid.sql.ast.statement.SQLIfStatement;
-import com.alibaba.druid.sql.ast.statement.SQLLoopStatement;
-import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlDeleteStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlInsertStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlUpdateStatement;
 
 /**
  * 
- * @Description: MySql procedure statement type
- * @author zz email:455910092@qq.com
- * @date 2015-9-14
- * @version V1.0
+ * @author zz [455910092@qq.com]
  */
 public enum MySqlStatementType {
 	//select statement
@@ -41,7 +35,7 @@ public enum MySqlStatementType {
 	//delete statement
 	DELETE(MySqlDeleteStatement.class.getName()),
 	//while statement
-	WHILE(MySqlWhileStatement.class.getName()),
+	WHILE(SQLWhileStatement.class.getName()),
 	//begin-end
 	IF(SQLIfStatement.class.getName()),
 	//begin-end

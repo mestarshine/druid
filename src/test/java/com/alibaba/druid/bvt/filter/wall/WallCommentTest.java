@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ public class WallCommentTest extends TestCase {
     }
     
     public void testmysql() throws Exception {
-        String sql = "SELECT F1, F2 FROM ABC --test";
+        String sql = "SELECT F1, F2 FROM ABC -- test";
 
         MySqlWallProvider provider = new MySqlWallProvider();
         Assert.assertFalse(provider.checkValid(sql));

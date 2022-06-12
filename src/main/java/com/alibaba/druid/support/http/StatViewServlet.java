@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import com.alibaba.druid.stat.DruidStatService;
 import com.alibaba.druid.support.logging.Log;
@@ -33,7 +35,7 @@ import com.alibaba.druid.support.logging.LogFactory;
 /**
  * 注意：避免直接调用Druid相关对象例如DruidDataSource等，相关调用要到DruidStatManagerFacade里用反射实现
  * 
- * @author sandzhang<sandzhangtoo@gmail.com>
+ * @author sandzhang[sandzhangtoo@gmail.com]
  */
 public class StatViewServlet extends ResourceServlet {
 
@@ -150,7 +152,7 @@ public class StatViewServlet extends ResourceServlet {
     }
 
     /**
-     * 程序首先判断是否存在jmx连接地址，如果不存在，则直接调用本地的duird服务； 如果存在，则调用远程jmx服务。在进行jmx通信，首先判断一下jmx连接是否已经建立成功，如果已经
+     * 程序首先判断是否存在jmx连接地址，如果不存在，则直接调用本地的druid服务； 如果存在，则调用远程jmx服务。在进行jmx通信，首先判断一下jmx连接是否已经建立成功，如果已经
      * 建立成功，则直接进行通信，如果之前没有成功建立，则会尝试重新建立一遍。.
      * 
      * @param url 要连接的服务地址
@@ -189,6 +191,36 @@ public class StatViewServlet extends ResourceServlet {
             }
         }
         return resp;
+    }
+
+    public void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String contextPath = request.getContextPath();
+        String servletPath = request.getServletPath();
+        String requestURI = request.getRequestURI();
+
+        response.setCharacterEncoding("utf-8");
+
+        if (contextPath == null) { // root context
+            contextPath = "";
+        }
+        String uri = contextPath + servletPath;
+        String path = requestURI.substring(contextPath.length() + servletPath.length());
+
+        if ("".equals(path)) {
+            if (contextPath.equals("") || contextPath.equals("/")) {
+                response.sendRedirect("/druid/index.html");
+            } else {
+                response.sendRedirect("druid/index.html");
+            }
+            return;
+        }
+
+        if ("/".equals(path)) {
+            response.sendRedirect("index.html");
+            return;
+        }
+
+        super.service(request, response);
     }
 
 }

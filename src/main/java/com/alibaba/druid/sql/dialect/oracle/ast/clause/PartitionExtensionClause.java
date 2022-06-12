@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
  */
 package com.alibaba.druid.sql.dialect.oracle.ast.clause;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.druid.sql.ast.SQLName;
 import com.alibaba.druid.sql.dialect.oracle.ast.OracleSQLObjectImpl;
 import com.alibaba.druid.sql.dialect.oracle.visitor.OracleASTVisitor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class PartitionExtensionClause extends OracleSQLObjectImpl {
 
@@ -57,4 +57,20 @@ public class PartitionExtensionClause extends OracleSQLObjectImpl {
         visitor.endVisit(this);
     }
 
+    public PartitionExtensionClause clone() {
+        PartitionExtensionClause x = new PartitionExtensionClause();
+
+        x.subPartition = subPartition;
+        if (partition != null) {
+            x.setPartition(partition.clone());
+        }
+
+        for (SQLName item : target) {
+            SQLName item1 = item.clone();
+            item1.setParent(x);
+            x.target.add(item1);
+        }
+
+        return x;
+    }
 }

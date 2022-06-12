@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,13 @@
  */
 package com.alibaba.druid.sql.dialect.db2.parser;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.alibaba.druid.sql.parser.Keywords;
 import com.alibaba.druid.sql.parser.Lexer;
+import com.alibaba.druid.sql.parser.SQLParserFeature;
 import com.alibaba.druid.sql.parser.Token;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class DB2Lexer extends Lexer {
@@ -36,12 +37,27 @@ public class DB2Lexer extends Lexer {
         map.put("FIRST", Token.FIRST);
         map.put("ONLY", Token.ONLY);
         map.put("OPTIMIZE", Token.OPTIMIZE);
+        map.put("OF", Token.OF);
+        map.put("CONCAT", Token.CONCAT);
+        map.put("CONTINUE", Token.CONTINUE);
+        map.put("IDENTITY", Token.IDENTITY);
+        map.put("MERGE", Token.MERGE);
+        map.put("USING", Token.USING);
+        map.put("MATCHED", Token.MATCHED);
         
         DEFAULT_DB2_KEYWORDS = new Keywords(map);
     }
 
     public DB2Lexer(String input){
         super(input);
-        super.keywods = DEFAULT_DB2_KEYWORDS;
+        super.keywords = DEFAULT_DB2_KEYWORDS;
+    }
+
+    public DB2Lexer(String input, SQLParserFeature... features){
+        super(input);
+        super.keywords = DEFAULT_DB2_KEYWORDS;
+        for (SQLParserFeature feature : features) {
+            config(feature, true);
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,16 @@
  */
 package com.alibaba.druid.pool.vendor;
 
-import com.alibaba.druid.pool.ExceptionSorter;
-import com.alibaba.druid.support.logging.Log;
-import com.alibaba.druid.support.logging.LogFactory;
-
 import java.io.Serializable;
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+
+import com.alibaba.druid.pool.ExceptionSorter;
+import com.alibaba.druid.support.logging.Log;
+import com.alibaba.druid.support.logging.LogFactory;
 
 /**
  * Implementation of ExceptionSorter for Oracle.
@@ -41,6 +42,10 @@ public class OracleExceptionSorter implements ExceptionSorter, Serializable {
     }
     
     public void configFromProperties(Properties properties) {
+        if (properties == null) {
+            return;
+        }
+
         String property = properties.getProperty("druid.oracle.fatalErrorCodes");
         if (property != null) {
             String[] items = property.split("\\,");
@@ -66,6 +71,10 @@ public class OracleExceptionSorter implements ExceptionSorter, Serializable {
     }
 
     public boolean isExceptionFatal(final SQLException e) {
+        if (e instanceof SQLRecoverableException) {
+            return true;
+        }
+
         final int error_code = Math.abs(e.getErrorCode()); // I can't remember if the errors are negative or positive.
 
         switch (error_code) {
@@ -110,6 +119,7 @@ public class OracleExceptionSorter implements ExceptionSorter, Serializable {
             case 17001: // Internal Error
             case 17002: // Io exception
             case 17008: // Closed Connection
+            case 17009: // Closed Statement
             case 17024: // No data read
             case 17089: // internal error
             case 17409: // invalid buffer length

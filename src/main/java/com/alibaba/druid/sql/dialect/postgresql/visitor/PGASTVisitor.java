@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,129 +15,181 @@
  */
 package com.alibaba.druid.sql.dialect.postgresql.visitor;
 
-import com.alibaba.druid.sql.dialect.postgresql.ast.PGWithClause;
-import com.alibaba.druid.sql.dialect.postgresql.ast.PGWithQuery;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGBoxExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGCidrExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGCircleExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGExtractExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGInetExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGIntervalExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGLineSegmentsExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGMacAddrExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGPointExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGPolygonExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGTypeCastExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGDeleteStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGFunctionTableSource;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGInsertStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGShowStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGUpdateStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGValuesQuery;
+import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
+import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.dialect.postgresql.ast.expr.*;
+import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.*;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
 public interface PGASTVisitor extends SQLASTVisitor {
-	
-	boolean visit(PGSelectQueryBlock.PGLimit x);
 
-	void endVisit(PGSelectQueryBlock.PGLimit x);
+    default void endVisit(PGSelectQueryBlock x) {
+        endVisit((SQLSelectQueryBlock) x);
+    }
 
-    void endVisit(PGSelectQueryBlock x);
+    default boolean visit(PGSelectQueryBlock x) {
+        return visit((SQLSelectQueryBlock) x);
+    }
 
-    boolean visit(PGSelectQueryBlock x);
+    default void endVisit(PGSelectQueryBlock.FetchClause x) {
+    }
 
-    void endVisit(PGSelectQueryBlock.WindowClause x);
+    default boolean visit(PGSelectQueryBlock.FetchClause x) {
+        return true;
+    }
 
-    boolean visit(PGSelectQueryBlock.WindowClause x);
+    default void endVisit(PGSelectQueryBlock.ForClause x) {
+    }
 
-    void endVisit(PGSelectQueryBlock.FetchClause x);
+    default boolean visit(PGSelectQueryBlock.ForClause x) {
+        return true;
+    }
 
-    boolean visit(PGSelectQueryBlock.FetchClause x);
+    default void endVisit(PGDeleteStatement x) {
+    }
 
-    void endVisit(PGSelectQueryBlock.ForClause x);
+    default boolean visit(PGDeleteStatement x) {
+        return true;
+    }
 
-    boolean visit(PGSelectQueryBlock.ForClause x);
+    default void endVisit(PGInsertStatement x) {}
 
-    void endVisit(PGWithQuery x);
+    default boolean visit(PGInsertStatement x) {
+        return true;
+    }
 
-    boolean visit(PGWithQuery x);
+    default void endVisit(PGSelectStatement x) {
+        endVisit((SQLSelectStatement) x);
+    }
 
-    void endVisit(PGWithClause x);
+    default boolean visit(PGSelectStatement x) {
+        return visit((SQLSelectStatement) x);
+    }
 
-    boolean visit(PGWithClause x);
+    default void endVisit(PGUpdateStatement x) {
+    }
 
-    void endVisit(PGDeleteStatement x);
+    default boolean visit(PGUpdateStatement x) {
+        return true;
+    }
 
-    boolean visit(PGDeleteStatement x);
+    default void endVisit(PGFunctionTableSource x) {
+    }
 
-    void endVisit(PGInsertStatement x);
+    default boolean visit(PGFunctionTableSource x) {
+        return true;
+    }
 
-    boolean visit(PGInsertStatement x);
+    default void endVisit(PGTypeCastExpr x) {
+    }
 
-    void endVisit(PGSelectStatement x);
+    default boolean visit(PGTypeCastExpr x) {
+        return true;
+    }
 
-    boolean visit(PGSelectStatement x);
+    default void endVisit(PGExtractExpr x) {
+    }
 
-    void endVisit(PGUpdateStatement x);
+    default boolean visit(PGExtractExpr x) {
+        return true;
+    }
 
-    boolean visit(PGUpdateStatement x);
+    default void endVisit(PGBoxExpr x) {
+    }
 
-    void endVisit(PGFunctionTableSource x);
+    default boolean visit(PGBoxExpr x) {
+        return true;
+    }
 
-    boolean visit(PGFunctionTableSource x);
-    
-    void endVisit(PGTypeCastExpr x);
-    
-    boolean visit(PGTypeCastExpr x);
-    
-    void endVisit(PGValuesQuery x);
-    
-    boolean visit(PGValuesQuery x);
-    
-    void endVisit(PGExtractExpr x);
-    
-    boolean visit(PGExtractExpr x);
-    
-    void endVisit(PGBoxExpr x);
-    
-    boolean visit(PGBoxExpr x);
-    
-    void endVisit(PGPointExpr x);
-    
-    boolean visit(PGPointExpr x);
-    
-    void endVisit(PGMacAddrExpr x);
-    
-    boolean visit(PGMacAddrExpr x);
-    
-    void endVisit(PGInetExpr x);
-    
-    boolean visit(PGInetExpr x);
-    
-    void endVisit(PGCidrExpr x);
-    
-    boolean visit(PGCidrExpr x);
-    
-    void endVisit(PGPolygonExpr x);
-    
-    boolean visit(PGPolygonExpr x);
-    
-    void endVisit(PGCircleExpr x);
-    
-    boolean visit(PGCircleExpr x);
-    
-    void endVisit(PGLineSegmentsExpr x);
-    
-    boolean visit(PGLineSegmentsExpr x);
+    default void endVisit(PGPointExpr x) {
+    }
 
-    void endVisit(PGIntervalExpr x);
+    default boolean visit(PGPointExpr x) {
+        return true;
+    }
 
-    boolean visit(PGIntervalExpr x);
-    
-    void endVisit(PGShowStatement x);
-    
-    boolean visit(PGShowStatement x);
+    default void endVisit(PGMacAddrExpr x) {
+    }
+
+    default boolean visit(PGMacAddrExpr x) {
+        return true;
+    }
+
+    default void endVisit(PGInetExpr x) {
+    }
+
+    default boolean visit(PGInetExpr x) {
+        return true;
+    }
+
+    default void endVisit(PGCidrExpr x) {
+    }
+
+    default boolean visit(PGCidrExpr x) {
+        return true;
+    }
+
+    default void endVisit(PGPolygonExpr x) {
+    }
+
+    default boolean visit(PGPolygonExpr x) {
+        return true;
+    }
+
+    default void endVisit(PGCircleExpr x) {
+    }
+
+    default boolean visit(PGCircleExpr x) {
+        return true;
+    }
+
+    default void endVisit(PGLineSegmentsExpr x) {
+    }
+
+    default boolean visit(PGLineSegmentsExpr x) {
+        return true;
+    }
+
+    default void endVisit(PGShowStatement x) {
+    }
+
+    default boolean visit(PGShowStatement x) {
+        return true;
+    }
+
+    default void endVisit(PGStartTransactionStatement x) {
+    }
+
+    default boolean visit(PGStartTransactionStatement x) {
+        return true;
+    }
+
+    default void endVisit(PGConnectToStatement x) {
+    }
+
+    default boolean visit(PGConnectToStatement x) {
+        return true;
+    }
+
+    default void endVisit(PGCreateSchemaStatement x) {
+    }
+
+    default boolean visit(PGCreateSchemaStatement x) {
+        return true;
+    }
+
+    default void endVisit(PGDropSchemaStatement x) {
+    }
+
+    default boolean visit(PGDropSchemaStatement x) {
+        return true;
+    }
+
+    default void endVisit(PGAlterSchemaStatement x) {
+    }
+
+    default boolean visit(PGAlterSchemaStatement x) {
+        return true;
+    }
 
 }

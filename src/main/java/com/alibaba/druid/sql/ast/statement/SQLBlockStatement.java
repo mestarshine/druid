@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,25 @@
  */
 package com.alibaba.druid.sql.ast.statement;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.druid.sql.ast.SQLParameter;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.SQLStatementImpl;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class SQLBlockStatement extends SQLStatementImpl {
     private String             labelName;
-
+    private String             endLabel;
     private List<SQLParameter> parameters    = new ArrayList<SQLParameter>();
-
     private List<SQLStatement> statementList = new ArrayList<SQLStatement>();
+    public SQLStatement        exception;
+    private boolean            endOfCommit;
+
+    public SQLBlockStatement() {
+
+    }
 
     public List<SQLStatement> getStatementList() {
         return statementList;
@@ -51,6 +56,7 @@ public class SQLBlockStatement extends SQLStatementImpl {
         if (visitor.visit(this)) {
             acceptChild(visitor, parameters);
             acceptChild(visitor, statementList);
+            acceptChild(visitor, exception);
         }
         visitor.endVisit(this);
     }
@@ -63,4 +69,64 @@ public class SQLBlockStatement extends SQLStatementImpl {
         this.parameters = parameters;
     }
 
+    public SQLStatement getException() {
+        return exception;
+    }
+
+    public void setException(SQLStatement exception) {
+        if (exception != null) {
+            exception.setParent(this);
+        }
+        this.exception = exception;
+    }
+
+    public String getEndLabel() {
+        return endLabel;
+    }
+
+    public void setEndLabel(String endLabel) {
+        this.endLabel = endLabel;
+    }
+
+    public SQLBlockStatement clone() {
+        SQLBlockStatement x = new SQLBlockStatement();
+        x.labelName = labelName;
+        x.endLabel = endLabel;
+
+        for (SQLParameter p : parameters) {
+            SQLParameter p2 = p.clone();
+            p2.setParent(x);
+            x.parameters.add(p2);
+        }
+
+        for (SQLStatement stmt : statementList) {
+            SQLStatement stmt2 = stmt.clone();
+            stmt2.setParent(x);
+            x.statementList.add(stmt2);
+        }
+
+        if (exception != null) {
+            x.setException(exception.clone());
+        }
+
+        return x;
+    }
+
+    public SQLParameter findParameter(long hash) {
+        for (SQLParameter param : this.parameters) {
+            if (param.getName().nameHashCode64() == hash) {
+                return param;
+            }
+        }
+
+        return null;
+    }
+
+    public boolean isEndOfCommit() {
+        return endOfCommit;
+    }
+
+    public void setEndOfCommit(boolean value) {
+        this.endOfCommit = value;
+    }
 }

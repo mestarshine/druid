@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,12 @@
  */
 package com.alibaba.druid.sql.parser;
 
+import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import junit.framework.TestCase;
+import org.junit.Assert;
+
+import java.util.List;
 
 public class SQLLexerTest2 extends TestCase {
 
@@ -67,5 +72,24 @@ public class SQLLexerTest2 extends TestCase {
             }
         }
     }
+
+    public void test_lexer_error_info(){
+        String line1 ="SELECT *";
+        String line2 ="FORM a";
+        String sql = line1 + "\n"+line2;
+        MySqlStatementParser parser=new MySqlStatementParser(sql);
+        Exception exception = null;
+        try {
+          parser.parseStatementList();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assert exception != null;
+        Assert.assertEquals("not supported.pos 13, line 2, column 2, token IDENTIFIER FORM", exception.getMessage());
+
+
+
+    }
+
     
 }

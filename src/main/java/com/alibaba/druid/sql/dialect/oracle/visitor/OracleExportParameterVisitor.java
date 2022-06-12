@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
  */
 package com.alibaba.druid.sql.dialect.oracle.visitor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.druid.sql.ast.SQLOrderBy;
 import com.alibaba.druid.sql.ast.expr.SQLBetweenExpr;
 import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
@@ -28,16 +25,32 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
 import com.alibaba.druid.sql.visitor.ExportParameterVisitor;
 import com.alibaba.druid.sql.visitor.ExportParameterVisitorUtils;
 
-public class OracleExportParameterVisitor extends OracleASTVisitorAdapter implements ExportParameterVisitor {
+import java.util.ArrayList;
+import java.util.List;
 
-    private final List<Object> parameters;
+public class OracleExportParameterVisitor extends OracleParameterizedOutputVisitor implements ExportParameterVisitor {
+
+    /**
+     * true= if require parameterized sql output
+     */
+    private final boolean requireParameterizedOutput;
+
+    public OracleExportParameterVisitor(List<Object> parameters,Appendable appender,final boolean wantParameterizedOutput){
+        super(appender,false);
+        this.parameters = parameters;
+        this.requireParameterizedOutput = wantParameterizedOutput;
+    }
 
     public OracleExportParameterVisitor() {
         this(new ArrayList<Object>());
     }
 
     public OracleExportParameterVisitor(List<Object> parameters){
-        this.parameters = parameters;
+        this(parameters,new StringBuilder(),false);
+    }
+
+    public OracleExportParameterVisitor(final Appendable appender) {
+        this(new ArrayList<Object>(),appender,true);
     }
 
     public List<Object> getParameters() {
@@ -46,40 +59,60 @@ public class OracleExportParameterVisitor extends OracleASTVisitorAdapter implem
 
     @Override
     public boolean visit(SQLSelectItem x) {
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
         return false;
     }
 
     @Override
     public boolean visit(SQLOrderBy x) {
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
         return false;
     }
 
     @Override
     public boolean visit(SQLSelectGroupByClause x) {
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
         return false;
     }
 
     @Override
     public boolean visit(SQLMethodInvokeExpr x) {
-        ExportParameterVisitorUtils.exportParamterAndAccept(this.parameters, x.getParameters());
-
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
+        
+        ExportParameterVisitorUtils.exportParamterAndAccept(this.parameters, x.getArguments());
         return true;
     }
 
     @Override
     public boolean visit(SQLInListExpr x) {
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
         ExportParameterVisitorUtils.exportParamterAndAccept(this.parameters, x.getTargetList());
-
         return true;
     }
 
     @Override
     public boolean visit(SQLBetweenExpr x) {
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
         ExportParameterVisitorUtils.exportParameter(this.parameters, x);
         return true;
     }
 
     public boolean visit(SQLBinaryOpExpr x) {
+        if(requireParameterizedOutput){
+            return super.visit(x);
+        }
         ExportParameterVisitorUtils.exportParameter(this.parameters, x);
         return true;
     }

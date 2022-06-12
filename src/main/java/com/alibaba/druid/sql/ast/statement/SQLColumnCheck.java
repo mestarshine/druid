@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,14 @@
 package com.alibaba.druid.sql.ast.statement;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
+import com.alibaba.druid.sql.ast.SQLName;
+import com.alibaba.druid.sql.ast.SQLReplaceable;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLColumnCheck extends SQLConstraintImpl implements SQLColumnConstraint {
+public class SQLColumnCheck extends SQLConstraintImpl implements SQLColumnConstraint, SQLReplaceable {
 
     private SQLExpr expr;
+    protected Boolean enforced;
 
     public SQLColumnCheck(){
 
@@ -41,6 +44,14 @@ public class SQLColumnCheck extends SQLConstraintImpl implements SQLColumnConstr
         this.expr = expr;
     }
 
+    public Boolean getEnforced() {
+        return enforced;
+    }
+
+    public void setEnforced(Boolean enforced) {
+        this.enforced = enforced;
+    }
+
     @Override
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
@@ -50,4 +61,34 @@ public class SQLColumnCheck extends SQLConstraintImpl implements SQLColumnConstr
         visitor.endVisit(this);
     }
 
+    public SQLColumnCheck clone() {
+        SQLColumnCheck x = new SQLColumnCheck();
+
+        super.cloneTo(x);
+
+        if (expr != null) {
+            x.setExpr(expr.clone());
+        }
+
+        return x;
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (this.expr == expr) {
+            setExpr(target);
+            return true;
+        }
+
+        if (getName() == expr) {
+            setName((SQLName) target);
+            return true;
+        }
+
+        if (getComment() == expr) {
+            setComment(target);
+            return true;
+        }
+        return false;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,38 @@
  */
 package com.alibaba.druid.sql.ast.statement;
 
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.*;
+import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLObjectImpl;
-import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.visitor.SQLASTVisitor;
-
 public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
-    private String dbType;
+    protected SQLWithSubqueryClause with;
+    protected boolean upsert = false; // for phoenix
 
     public SQLInsertStatement(){
 
+    }
+
+    public void cloneTo(SQLInsertStatement x) {
+        super.cloneTo(x);
+        x.dbType = dbType;
+        x.upsert = upsert;
+        x.afterSemi = afterSemi;
+
+        if (with != null) {
+            x.setWith(with.clone());
+        }
+    }
+
+    public SQLInsertStatement clone() {
+        SQLInsertStatement x = new SQLInsertStatement();
+        cloneTo(x);
+        return x;
     }
 
     @Override
@@ -35,19 +54,63 @@ public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
         if (visitor.visit(this)) {
             this.acceptChild(visitor, tableSource);
             this.acceptChild(visitor, columns);
-            this.acceptChild(visitor, values);
+            this.acceptChild(visitor, valuesList);
             this.acceptChild(visitor, query);
         }
 
         visitor.endVisit(this);
     }
 
-    public static class ValuesClause extends SQLObjectImpl {
+    @Override
+    public List<SQLObject> getChildren() {
+        List<SQLObject> children = new ArrayList<SQLObject>();
 
-        private final List<SQLExpr> values;
+        children.add(tableSource);
+        children.addAll(this.columns);
+        children.addAll(this.valuesList);
+        if (query != null) {
+            children.add(query);
+        }
+
+        return children;
+    }
+
+    public boolean isUpsert() {
+        return upsert;
+    }
+
+    public void setUpsert(boolean upsert) {
+        this.upsert = upsert;
+    }
+
+    public static class ValuesClause extends SQLObjectImpl implements SQLReplaceable {
+
+        private final     List   values;
+        private transient String originalString;
+        private transient int    replaceCount;
 
         public ValuesClause(){
             this(new ArrayList<SQLExpr>());
+        }
+
+        public ValuesClause clone() {
+            ValuesClause x = new ValuesClause(new ArrayList<SQLExpr>(this.values.size()));
+            for (Object v : values) {
+                x.addValue(v);
+            }
+            return x;
+        }
+
+        public boolean replace(SQLExpr expr, SQLExpr target) {
+            for (int i = 0; i < values.size(); i++) {
+                if (values.get(i) == expr) {
+                    target.setParent(this);
+                    values.set(i, target);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public ValuesClause(List<SQLExpr> values){
@@ -55,6 +118,25 @@ public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
             for (int i = 0; i < values.size(); ++i) {
                 values.get(i).setParent(this);
             }
+        }
+
+
+        public ValuesClause(List values, SQLObject parent){
+            this.values = values;
+            for (int i = 0; i < values.size(); ++i) {
+                Object val = values.get(i);
+                if (val instanceof SQLObject) {
+                    ((SQLObject) val).setParent(this);
+                }
+            }
+            this.parent = parent;
+        }
+
+        public void addValue(Object value) {
+            if (value instanceof SQLObject) {
+                ((SQLObject) value).setParent(this);
+            }
+            values.add(value);
         }
 
         public void addValue(SQLExpr value) {
@@ -66,33 +148,70 @@ public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
             return values;
         }
 
-        public void output(StringBuffer buf) {
-            buf.append(" VALUES (");
-            for (int i = 0, size = values.size(); i < size; ++i) {
-                if (i != 0) {
-                    buf.append(", ");
-                }
-                values.get(i).output(buf);
-            }
-            buf.append(")");
-        }
-
         @Override
         protected void accept0(SQLASTVisitor visitor) {
             if (visitor.visit(this)) {
-                this.acceptChild(visitor, values);
+                for (int i = 0; i < values.size(); i++) {
+                    Object item = values.get(i);
+                    if (item instanceof SQLObject) {
+                        SQLObject value = (SQLObject) item;
+                        value.accept(visitor);
+                    }
+                }
             }
 
             visitor.endVisit(this);
         }
+
+        public String getOriginalString() {
+            return originalString;
+        }
+
+        public void setOriginalString(String originalString) {
+            this.originalString = originalString;
+        }
+
+        public int getReplaceCount() {
+            return replaceCount;
+        }
+
+        public void incrementReplaceCount() {
+            this.replaceCount++;
+        }
     }
 
     @Override
-    public String getDbType() {
+    public DbType getDbType() {
         return dbType;
     }
     
-    public void setDbType(String dbType) {
+    public void setDbType(DbType dbType) {
         this.dbType = dbType;
+    }
+
+    @Override
+    public boolean isAfterSemi() {
+        return afterSemi;
+    }
+
+    @Override
+    public void setAfterSemi(boolean afterSemi) {
+        this.afterSemi = afterSemi;
+    }
+
+
+    public SQLWithSubqueryClause getWith() {
+        return with;
+    }
+
+    public void setWith(SQLWithSubqueryClause with) {
+        if (with != null) {
+            with.setParent(this);
+        }
+        this.with = with;
+    }
+
+    public String toString() {
+        return SQLUtils.toSQLString(this, dbType);
     }
 }

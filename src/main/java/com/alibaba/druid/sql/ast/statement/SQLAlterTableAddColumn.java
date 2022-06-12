@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,27 @@
  */
 package com.alibaba.druid.sql.ast.statement;
 
+import com.alibaba.druid.sql.ast.SQLName;
+import com.alibaba.druid.sql.ast.SQLObjectImpl;
+import com.alibaba.druid.sql.ast.expr.SQLCharExpr;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.ast.SQLObjectImpl;
-import com.alibaba.druid.sql.visitor.SQLASTVisitor;
-
 public class SQLAlterTableAddColumn extends SQLObjectImpl implements SQLAlterTableItem {
-
     private final List<SQLColumnDefinition> columns = new ArrayList<SQLColumnDefinition>();
-    
-    
+
     // for mysql
     private SQLName firstColumn;
     private SQLName afterColumn;
-
     private boolean first;
+    private Boolean restrict;
+    private boolean cascade;
+
+    public SQLAlterTableAddColumn() {
+
+    }
 
     @Override
     protected void accept0(SQLASTVisitor visitor) {
@@ -43,6 +47,13 @@ public class SQLAlterTableAddColumn extends SQLObjectImpl implements SQLAlterTab
 
     public List<SQLColumnDefinition> getColumns() {
         return columns;
+    }
+    
+    public void addColumn(SQLColumnDefinition column) {
+        if (column != null) {
+            column.setParent(this);
+        }
+        this.columns.add(column);
     }
 
     public SQLName getFirstColumn() {
@@ -67,5 +78,28 @@ public class SQLAlterTableAddColumn extends SQLObjectImpl implements SQLAlterTab
 
     public void setAfterColumn(SQLName after) {
         this.afterColumn = after;
+    }
+
+    public Boolean getRestrict() {
+        return restrict;
+    }
+
+    public boolean isRestrict() {
+        if (restrict == null) {
+            return !cascade;
+        }
+        return restrict;
+    }
+
+    public void setRestrict(boolean restrict) {
+        this.restrict = restrict;
+    }
+
+    public boolean isCascade() {
+        return cascade;
+    }
+
+    public void setCascade(boolean cascade) {
+        this.cascade = cascade;
     }
 }

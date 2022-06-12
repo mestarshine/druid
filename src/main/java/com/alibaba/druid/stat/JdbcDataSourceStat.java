@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,6 @@
  */
 package com.alibaba.druid.stat;
 
-import com.alibaba.druid.Constants;
-import com.alibaba.druid.filter.Filter;
-import com.alibaba.druid.filter.stat.StatFilter;
-import com.alibaba.druid.proxy.jdbc.DataSourceProxy;
-import com.alibaba.druid.support.logging.Log;
-import com.alibaba.druid.support.logging.LogFactory;
-import com.alibaba.druid.util.Histogram;
-
-import javax.management.JMException;
-import javax.management.openmbean.CompositeType;
-import javax.management.openmbean.TabularData;
-import javax.management.openmbean.TabularDataSupport;
-import javax.management.openmbean.TabularType;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -38,6 +25,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.management.JMException;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
+
+import com.alibaba.druid.Constants;
+import com.alibaba.druid.filter.Filter;
+import com.alibaba.druid.filter.stat.StatFilter;
+import com.alibaba.druid.proxy.jdbc.DataSourceProxy;
+import com.alibaba.druid.support.logging.Log;
+import com.alibaba.druid.support.logging.LogFactory;
+import com.alibaba.druid.util.Histogram;
 
 public class JdbcDataSourceStat implements JdbcDataSourceStatMBean {
 
@@ -71,8 +72,8 @@ public class JdbcDataSourceStat implements JdbcDataSourceStatMBean {
                                                                                                                                                 1);
 
     private final AtomicLong                                    clobOpenCount           = new AtomicLong();
-
     private final AtomicLong                                    blobOpenCount           = new AtomicLong();
+    private final AtomicLong                                    keepAliveCheckCount     = new AtomicLong();
 
     private boolean                                             resetStatEnable         = true;
 
@@ -497,4 +498,15 @@ public class JdbcDataSourceStat implements JdbcDataSourceStatMBean {
         blobOpenCount.incrementAndGet();
     }
 
+    public long getKeepAliveCheckCount() {
+        return keepAliveCheckCount.get();
+    }
+
+    public long getKeepAliveCheckCountAndReset() {
+        return keepAliveCheckCount.getAndSet(0);
+    }
+
+    public void addKeepAliveCheckCount(long delta) {
+        keepAliveCheckCount.addAndGet(delta);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.alibaba.druid.support.logging.Log;
 import com.alibaba.druid.support.logging.LogFactory;
 
 /**
- * @author wenshao<szujobs@hotmail.com>
+ * @author wenshao [szujobs@hotmail.com]
  * @since 0.2.19
  */
 public class DruidDataSourceStatLoggerImpl extends DruidDataSourceStatLoggerAdapter {
@@ -46,6 +46,10 @@ public class DruidDataSourceStatLoggerImpl extends DruidDataSourceStatLoggerAdap
      */
     @Override
     public void configFromProperties(Properties properties) {
+        if (properties == null) {
+            return;
+        }
+
         String property = properties.getProperty("druid.stat.loggerName");
         if (property != null && property.length() > 0) {
             setLoggerName(property);
@@ -206,7 +210,7 @@ public class DruidDataSourceStatLoggerImpl extends DruidDataSourceStatLoggerAdap
 
                 if (sqlStat.getFetchRowCount() > 0) {
                     sqlStatMap.put("fetchRowCount", sqlStat.getFetchRowCount());
-                    sqlStatMap.put("fetchRowCount", sqlStat.getFetchRowCountMax());
+                    sqlStatMap.put("fetchRowCountMax", sqlStat.getFetchRowCountMax());
                     sqlStatMap.put("fetchRowHistogram", rtrim(sqlStat.getFetchRowHistogram()));
                 }
 
@@ -232,6 +236,10 @@ public class DruidDataSourceStatLoggerImpl extends DruidDataSourceStatLoggerAdap
             }
 
             map.put("sqlList", sqlList);
+        }
+
+        if (statValue.getKeepAliveCheckCount() > 0) {
+            map.put("keepAliveCheckCount", statValue.getKeepAliveCheckCount());
         }
 
         String text = JSONUtils.toJSONString(map);

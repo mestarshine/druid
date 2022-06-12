@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ import java.sql.Struct;
 import java.sql.Wrapper;
 import java.util.Calendar;
 import java.util.Properties;
+import java.util.concurrent.Executor;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.pool.DruidPooledConnection;
@@ -53,13 +54,15 @@ import com.alibaba.druid.proxy.jdbc.ResultSetProxy;
 import com.alibaba.druid.proxy.jdbc.StatementProxy;
 
 /**
- * @author wenshao<szujobs@hotmail.com>
+ * @author wenshao [szujobs@hotmail.com]
  */
 public interface FilterChain {
 
     DataSourceProxy getDataSource();
 
     int getFilterSize();
+
+    int getPos();
 
     FilterChain cloneChain();
 
@@ -175,6 +178,11 @@ public interface FilterChain {
     Struct connection_createStruct(ConnectionProxy connection, String typeName, Object[] attributes)
                                                                                                     throws SQLException;
 
+    String connection_getSchema(ConnectionProxy connection) throws SQLException;
+    void connection_setSchema(ConnectionProxy connection, String schema) throws SQLException;
+    void connection_abort(ConnectionProxy connection, Executor executor) throws SQLException;
+    void connection_setNetworkTimeout(ConnectionProxy connection, Executor executor, int milliseconds) throws SQLException;
+    int connection_getNetworkTimeout(ConnectionProxy connection) throws SQLException;
     // ---------
 
     // ///////////////
@@ -258,7 +266,11 @@ public interface FilterChain {
 
     Object resultSet_getObject(ResultSetProxy resultSet, int columnIndex) throws SQLException;
 
+    <T> T resultSet_getObject(ResultSetProxy resultSet, int columnIndex, Class<T> type) throws SQLException;
+
     Object resultSet_getObject(ResultSetProxy resultSet, String columnLabel) throws SQLException;
+
+    <T> T resultSet_getObject(ResultSetProxy resultSet, String columnLabel, Class<T> type) throws SQLException;
 
     int resultSet_findColumn(ResultSetProxy resultSet, String columnLabel) throws SQLException;
 

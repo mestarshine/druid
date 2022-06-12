@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+import com.alibaba.druid.DbType;
 import org.junit.Assert;
 import junit.framework.TestCase;
 
@@ -43,7 +44,7 @@ public class TestH2 extends TestCase {
     }
 
     public void test_h2() throws Exception {
-        Assert.assertSame(JdbcUtils.H2, dataSource.getDbType());
+        Assert.assertSame(JdbcUtils.H2, DbType.of(dataSource.getDbType()));
         
         Connection conn = dataSource.getConnection();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,6 @@
  */
 package com.alibaba.druid.filter;
 
-import com.alibaba.druid.pool.DruidDataSource;
-import com.alibaba.druid.pool.DruidPooledConnection;
-import com.alibaba.druid.proxy.jdbc.CallableStatementProxy;
-import com.alibaba.druid.proxy.jdbc.ClobProxy;
-import com.alibaba.druid.proxy.jdbc.ConnectionProxy;
-import com.alibaba.druid.proxy.jdbc.DataSourceProxy;
-import com.alibaba.druid.proxy.jdbc.PreparedStatementProxy;
-import com.alibaba.druid.proxy.jdbc.ResultSetMetaDataProxy;
-import com.alibaba.druid.proxy.jdbc.ResultSetProxy;
-import com.alibaba.druid.proxy.jdbc.StatementProxy;
-
-import javax.management.NotificationBroadcasterSupport;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -51,11 +39,25 @@ import java.sql.Wrapper;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executor;
+
+import javax.management.NotificationBroadcasterSupport;
+
+import com.alibaba.druid.pool.DruidDataSource;
+import com.alibaba.druid.pool.DruidPooledConnection;
+import com.alibaba.druid.proxy.jdbc.CallableStatementProxy;
+import com.alibaba.druid.proxy.jdbc.ClobProxy;
+import com.alibaba.druid.proxy.jdbc.ConnectionProxy;
+import com.alibaba.druid.proxy.jdbc.DataSourceProxy;
+import com.alibaba.druid.proxy.jdbc.PreparedStatementProxy;
+import com.alibaba.druid.proxy.jdbc.ResultSetMetaDataProxy;
+import com.alibaba.druid.proxy.jdbc.ResultSetProxy;
+import com.alibaba.druid.proxy.jdbc.StatementProxy;
 
 /**
  * 提供JdbcFilter的基本实现，使得实现一个JdbcFilter更容易。
  * 
- * @author wenshao<szujobs@hotmail.com>
+ * @author wenshao [szujobs@hotmail.com]
  */
 public abstract class FilterAdapter extends NotificationBroadcasterSupport implements Filter {
 
@@ -1038,6 +1040,27 @@ public abstract class FilterAdapter extends NotificationBroadcasterSupport imple
     }
 
     @Override
+    public String connection_getSchema(FilterChain chain, ConnectionProxy connection) throws SQLException {
+        return chain.connection_getSchema(connection);
+    }
+
+    @Override
+    public void connection_setSchema(FilterChain chain, ConnectionProxy connection, String schema) throws SQLException {
+        chain.connection_setSchema(connection, schema);
+    }
+
+    public void connection_abort(FilterChain chain, ConnectionProxy connection, Executor executor) throws SQLException {
+        chain.connection_abort(connection, executor);
+    }
+
+    public void connection_setNetworkTimeout(FilterChain chain, ConnectionProxy connection, Executor executor, int milliseconds) throws SQLException {
+        chain.connection_setNetworkTimeout(connection, executor, milliseconds);
+    }
+    public int connection_getNetworkTimeout(FilterChain chain, ConnectionProxy connection) throws SQLException {
+        return chain.connection_getNetworkTimeout(connection);
+    }
+
+    @Override
     public boolean isWrapperFor(FilterChain chain, Wrapper wrapper, Class<?> iface) throws SQLException {
         return chain.isWrapperFor(wrapper, iface);
     }
@@ -1676,6 +1699,11 @@ public abstract class FilterAdapter extends NotificationBroadcasterSupport imple
     }
 
     @Override
+    public <T> T resultSet_getObject(FilterChain chain, ResultSetProxy result, int columnIndex, Class<T> type) throws SQLException {
+        return chain.resultSet_getObject(result, columnIndex, type);
+    }
+
+    @Override
     public Object resultSet_getObject(FilterChain chain, ResultSetProxy result, int columnIndex,
                                       java.util.Map<String, Class<?>> map) throws SQLException {
         return chain.resultSet_getObject(result, columnIndex, map);
@@ -1684,6 +1712,11 @@ public abstract class FilterAdapter extends NotificationBroadcasterSupport imple
     @Override
     public Object resultSet_getObject(FilterChain chain, ResultSetProxy result, String columnLabel) throws SQLException {
         return chain.resultSet_getObject(result, columnLabel);
+    }
+
+    @Override
+    public <T> T resultSet_getObject(FilterChain chain, ResultSetProxy result, String columnLabel, Class<T> type) throws SQLException {
+        return chain.resultSet_getObject(result, columnLabel, type);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,14 @@
 package com.alibaba.druid.sql.ast.statement;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
+import com.alibaba.druid.sql.ast.SQLName;
+import com.alibaba.druid.sql.ast.SQLReplaceable;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLCheck extends SQLConstraintImpl implements SQLTableElement {
+public class SQLCheck extends SQLConstraintImpl implements SQLTableElement, SQLTableConstraint, SQLReplaceable {
 
     private SQLExpr expr;
+    private Boolean enforced;
 
     public SQLCheck(){
 
@@ -34,20 +37,67 @@ public class SQLCheck extends SQLConstraintImpl implements SQLTableElement {
         return expr;
     }
 
-    public void setExpr(SQLExpr expr) {
-        if (expr != null) {
-            expr.setParent(this);
+    public void setExpr(SQLExpr x) {
+        if (x != null) {
+            x.setParent(this);
         }
-        this.expr = expr;
+        this.expr = x;
     }
 
     @Override
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
-            acceptChild(visitor, this.getName());
-            acceptChild(visitor, this.getExpr());
+            if (getName() != null) {
+                getName().accept(visitor);
+            }
+
+            if (expr != null) {
+                expr.accept(visitor);
+            }
         }
         visitor.endVisit(this);
     }
 
+    public void cloneTo(SQLCheck x) {
+        super.cloneTo(x);
+
+        if (expr != null) {
+            expr = expr.clone();
+        }
+
+        x.enforced = enforced;
+    }
+
+    public SQLCheck clone() {
+        SQLCheck x = new SQLCheck();
+        cloneTo(x);
+        return x;
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (this.expr == expr) {
+            setExpr(target);
+            return true;
+        }
+
+        if (getName() == expr) {
+            setName((SQLName) target);
+            return true;
+        }
+
+        if (getComment() == expr) {
+            setComment(target);
+            return true;
+        }
+        return false;
+    }
+
+    public Boolean getEnforced() {
+        return enforced;
+    }
+
+    public void setEnforced(Boolean enforced) {
+        this.enforced = enforced;
+    }
 }

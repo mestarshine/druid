@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,147 +15,55 @@
  */
 package com.alibaba.druid.sql.dialect.postgresql.visitor;
 
-import java.util.Map;
-
+import com.alibaba.druid.DbType;
 import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
 import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
 import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.PGWithClause;
-import com.alibaba.druid.sql.dialect.postgresql.ast.PGWithQuery;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGBoxExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGCidrExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGCircleExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGExtractExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGInetExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGIntervalExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGLineSegmentsExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGMacAddrExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGPointExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGPolygonExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.expr.PGTypeCastExpr;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGDeleteStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGFunctionTableSource;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGInsertStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock;
+import com.alibaba.druid.sql.ast.statement.SQLTableSource;
+import com.alibaba.druid.sql.dialect.postgresql.ast.expr.*;
+import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.*;
 import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock.FetchClause;
 import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock.ForClause;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock.PGLimit;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectQueryBlock.WindowClause;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGSelectStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGShowStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGUpdateStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.stmt.PGValuesQuery;
+import com.alibaba.druid.sql.repository.SchemaRepository;
 import com.alibaba.druid.sql.visitor.SchemaStatVisitor;
 import com.alibaba.druid.stat.TableStat;
 import com.alibaba.druid.stat.TableStat.Mode;
-import com.alibaba.druid.util.JdbcUtils;
+import com.alibaba.druid.util.PGUtils;
 
 public class PGSchemaStatVisitor extends SchemaStatVisitor implements PGASTVisitor {
+    public PGSchemaStatVisitor() {
+        super(DbType.postgresql);
+    }
 
-    @Override
-    public String getDbType() {
-        return JdbcUtils.POSTGRESQL;
+    public PGSchemaStatVisitor(SchemaRepository repository) {
+        super (repository);
     }
 
     @Override
-    public void endVisit(WindowClause x) {
-
-    }
-
-    @Override
-    public boolean visit(WindowClause x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(FetchClause x) {
-
-    }
-
-    @Override
-    public boolean visit(FetchClause x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(ForClause x) {
-
-    }
-
-    @Override
-    public boolean visit(ForClause x) {
-
-        return true;
-    }
-
-    @Override
-    public void endVisit(PGWithQuery x) {
-
-    }
-
-    @Override
-    public boolean visit(PGWithQuery x) {
-        x.getQuery().accept(this);
-        
-        Map<String, String> aliasMap = getAliasMap();
-        if (aliasMap != null) {
-            String alias = null;
-            if (x.getName() != null) {
-                alias = x.getName().toString();
-            }
-
-            if (alias != null) {
-                aliasMap.put(alias, null);
-                subQueryMap.put(alias, x.getQuery());
-            }
-        }
-        
-        return false;
-    }
-
-    @Override
-    public void endVisit(PGWithClause x) {
-
-    }
-
-    @Override
-    public boolean visit(PGWithClause x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(PGDeleteStatement x) {
-
+    public DbType getDbType() {
+        return DbType.postgresql;
     }
 
     @Override
     public boolean visit(PGDeleteStatement x) {
+        if (repository != null
+                && x.getParent() == null) {
+            repository.resolve(x);
+        }
+
         if (x.getWith() != null) {
             x.getWith().accept(this);
         }
 
-        setAliasMap();
-
-        for (SQLName name : x.getUsing()) {
-            String ident = name.toString();
-
-            TableStat stat = getTableStat(ident);
-            stat.incrementSelectCount();
-
-            Map<String, String> aliasMap = getAliasMap();
-            if (aliasMap != null) {
-                aliasMap.put(ident, ident);
-            }
+        SQLTableSource using = x.getUsing();
+        if (using != null) {
+            using.accept(this);
         }
 
         x.putAttribute("_original_use_mode", getMode());
         setMode(x, Mode.Delete);
 
-        String ident = ((SQLIdentifierExpr) x.getTableName()).getName();
-        setCurrentTable(ident);
-
-        TableStat stat = getTableStat(ident, x.getAlias());
+        TableStat stat = getTableStat(x.getTableName());
         stat.incrementDeleteCount();
 
         accept(x.getWhere());
@@ -164,13 +72,11 @@ public class PGSchemaStatVisitor extends SchemaStatVisitor implements PGASTVisit
     }
 
     @Override
-    public void endVisit(PGInsertStatement x) {
-
-    }
-
-    @Override
     public boolean visit(PGInsertStatement x) {
-        setAliasMap();
+        if (repository != null
+                && x.getParent() == null) {
+            repository.resolve(x);
+        }
 
         if (x.getWith() != null) {
             x.getWith().accept(this);
@@ -179,23 +85,11 @@ public class PGSchemaStatVisitor extends SchemaStatVisitor implements PGASTVisit
         x.putAttribute("_original_use_mode", getMode());
         setMode(x, Mode.Insert);
 
-        String originalTable = getCurrentTable();
 
-        if (x.getTableName() instanceof SQLName) {
-            String ident = ((SQLName) x.getTableName()).toString();
-            setCurrentTable(ident);
-            x.putAttribute("_old_local_", originalTable);
-
-            TableStat stat = getTableStat(ident);
+        SQLName tableName = x.getTableName();
+        {
+            TableStat stat = getTableStat(tableName);
             stat.incrementInsertCount();
-
-            Map<String, String> aliasMap = getAliasMap();
-            if (aliasMap != null) {
-                if (x.getAlias() != null) {
-                    aliasMap.put(x.getAlias(), ident);
-                }
-                aliasMap.put(ident, ident);
-            }
         }
 
         accept(x.getColumns());
@@ -211,203 +105,69 @@ public class PGSchemaStatVisitor extends SchemaStatVisitor implements PGASTVisit
 
     @Override
     public boolean visit(PGSelectStatement x) {
-        if (x.getWith() != null) {
-            x.getWith().accept(this);
-        }
-
         return visit((SQLSelectStatement) x);
     }
 
-    @Override
-    public void endVisit(PGUpdateStatement x) {
-
+    public boolean isPseudoColumn(long hash) {
+        return PGUtils.isPseudoColumn(hash);
     }
 
     @Override
     public boolean visit(PGUpdateStatement x) {
-        Map<String, String> oldAliasMap = getAliasMap();
-
-        setAliasMap();
+        if (repository != null
+                && x.getParent() == null) {
+            repository.resolve(x);
+        }
 
         if (x.getWith() != null) {
             x.getWith().accept(this);
         }
 
-        String ident = x.getTableName().toString();
-        setCurrentTable(ident);
-
-        TableStat stat = getTableStat(ident);
+        TableStat stat = getTableStat(x.getTableName());
         stat.incrementUpdateCount();
 
-        Map<String, String> aliasMap = getAliasMap();
-        aliasMap.put(ident, ident);
+        accept(x.getFrom());
 
         accept(x.getItems());
         accept(x.getWhere());
 
-        setAliasMap(oldAliasMap);
-
         return false;
     }
 
-    @Override
-    public void endVisit(PGSelectQueryBlock x) {
-
-    }
-
-    @Override
-    public boolean visit(PGSelectQueryBlock x) {
-        return this.visit((SQLSelectQueryBlock) x);
-    }
-
-    @Override
-    public void endVisit(PGFunctionTableSource x) {
-
-    }
-
-    @Override
-    public boolean visit(PGFunctionTableSource x) {
-        return true;
-    }
-
-    @Override
-    public boolean visit(PGLimit x) {
-        return false;
-    }
-
-    @Override
-    public void endVisit(PGLimit x) {
-        
-    }
-    
     @Override
     public boolean visit(PGTypeCastExpr x) {
         x.getExpr().accept(this);
         return false;
     }
-    
-    @Override
-    public void endVisit(PGTypeCastExpr x) {
-        
-    }
 
-    @Override
-    public void endVisit(PGValuesQuery x) {
-        
-    }
-
-    @Override
-    public boolean visit(PGValuesQuery x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGExtractExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGExtractExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGBoxExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGBoxExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGPointExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGMacAddrExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGMacAddrExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGInetExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGInetExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGCidrExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGCidrExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGPolygonExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGPolygonExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGCircleExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGCircleExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGLineSegmentsExpr x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(PGIntervalExpr x) {
-
-    }
-
-    @Override
-    public boolean visit(PGIntervalExpr x) {
-        return true;
-    }
-
-    @Override
-    public void endVisit(PGLineSegmentsExpr x) {
-        
-    }
-    
-    @Override
-    public boolean visit(PGPointExpr x) {
-        return true;
-    }
-    
-    @Override
-    public void endVisit(PGShowStatement x) {
-        
-    }
-    
     @Override
     public boolean visit(PGShowStatement x) {
         return false;
     }
+
+    @Override
+    public boolean visit(PGStartTransactionStatement x) {
+        return false;
+    }
+
+    @Override
+    public boolean visit(PGConnectToStatement x) {
+        return false;
+    }
+
+    @Override
+    public boolean visit(PGCreateSchemaStatement x) {
+        return false;
+    }
+
+    @Override
+    public boolean visit(PGDropSchemaStatement x) {
+        return false;
+    }
+
+    @Override
+    public boolean visit(PGAlterSchemaStatement x) {
+        return false;
+    }
+
 }

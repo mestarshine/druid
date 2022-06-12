@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,13 +46,23 @@ public class FilterManager {
                     aliasMap.put(name, (String) entry.getValue());
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LOG.error("load filter config error", e);
         }
     }
 
     public static final String getFilter(String alias) {
-        return aliasMap.get(alias);
+        if (alias == null) {
+            return null;
+        }
+
+        String filter = aliasMap.get(alias);
+
+        if (filter == null && alias.length() < 128) {
+            filter = alias;
+        }
+
+        return filter;
     }
 
     public static Properties loadFilterConfig() throws IOException {
@@ -61,7 +71,6 @@ public class FilterManager {
         loadFilterConfig(filterProperties, ClassLoader.getSystemClassLoader());
         loadFilterConfig(filterProperties, FilterManager.class.getClassLoader());
         loadFilterConfig(filterProperties, Thread.currentThread().getContextClassLoader());
-        loadFilterConfig(filterProperties, FilterManager.class.getClassLoader());
 
         return filterProperties;
     }
@@ -112,9 +121,17 @@ public class FilterManager {
 
                 try {
                     filter = (Filter) filterClass.newInstance();
+                } catch (ClassCastException e) {
+                    LOG.error("load filter error.", e);
+                    continue;
+                } catch (NoSuchFieldError e) {
+                    LOG.error("load filter error.", e);
+                    continue;
                 } catch (InstantiationException e) {
                     throw new SQLException("load managed jdbc driver event listener error. " + filterName, e);
                 } catch (IllegalAccessException e) {
+                    throw new SQLException("load managed jdbc driver event listener error. " + filterName, e);
+                } catch (RuntimeException e) {
                     throw new SQLException("load managed jdbc driver event listener error. " + filterName, e);
                 }
 

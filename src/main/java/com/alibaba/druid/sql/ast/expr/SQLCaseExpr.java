@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,17 @@
  */
 package com.alibaba.druid.sql.ast.expr;
 
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.*;
+import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLExprImpl;
-import com.alibaba.druid.sql.ast.SQLObjectImpl;
-import com.alibaba.druid.sql.visitor.SQLASTVisitor;
-
-public class SQLCaseExpr extends SQLExprImpl implements Serializable {
+public class SQLCaseExpr extends SQLExprImpl implements SQLReplaceable, Serializable {
 
     private static final long serialVersionUID = 1L;
     private final List<Item>  items            = new ArrayList<Item>();
@@ -68,16 +69,58 @@ public class SQLCaseExpr extends SQLExprImpl implements Serializable {
         }
     }
 
+    public void addItem(SQLExpr condition, SQLExpr value) {
+        this.addItem(new Item(condition, value));
+    }
+
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
-            acceptChild(visitor, this.valueExpr);
-            acceptChild(visitor, this.items);
-            acceptChild(visitor, this.elseExpr);
+            if (valueExpr != null) {
+                valueExpr.accept(visitor);
+            }
+
+            for (Item item : this.items) {
+                if (item != null) {
+                    item.accept(visitor);
+                }
+            }
+
+            if (elseExpr != null) {
+                elseExpr.accept(visitor);
+            }
         }
         visitor.endVisit(this);
     }
 
-    public static class Item extends SQLObjectImpl implements Serializable {
+    @Override
+    public List getChildren() {
+        List<SQLObject> children = new ArrayList<SQLObject>();
+        if (valueExpr != null) {
+            children.add(this.valueExpr);
+        }
+        children.addAll(this.items);
+        if (elseExpr != null) {
+            children.add(this.elseExpr);
+        }
+        return children;
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (valueExpr == expr) {
+            setValueExpr(target);
+            return true;
+        }
+
+        if (elseExpr == expr) {
+            setElseExpr(target);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static class Item extends SQLObjectImpl implements SQLReplaceable, Serializable {
 
         private static final long serialVersionUID = 1L;
         private SQLExpr           conditionExpr;
@@ -117,8 +160,13 @@ public class SQLCaseExpr extends SQLExprImpl implements Serializable {
 
         protected void accept0(SQLASTVisitor visitor) {
             if (visitor.visit(this)) {
-                acceptChild(visitor, this.conditionExpr);
-                acceptChild(visitor, this.valueExpr);
+                if (this.conditionExpr != null) {
+                    this.conditionExpr.accept(visitor);
+                }
+
+                if (valueExpr != null) {
+                    valueExpr.accept(visitor);
+                }
             }
             visitor.endVisit(this);
         }
@@ -147,6 +195,32 @@ public class SQLCaseExpr extends SQLExprImpl implements Serializable {
             return true;
         }
 
+
+        public Item clone() {
+            Item x = new Item();
+            if (conditionExpr != null) {
+                x.setConditionExpr(conditionExpr.clone());
+            }
+            if (valueExpr != null) {
+                x.setValueExpr(valueExpr.clone());
+            }
+            return x;
+        }
+
+        @Override
+        public boolean replace(SQLExpr expr, SQLExpr target) {
+            if (valueExpr == expr) {
+                setValueExpr(target);
+                return true;
+            }
+
+            if (conditionExpr == expr) {
+                setConditionExpr(target);
+                return true;
+            }
+
+            return false;
+        }
     }
 
     @Override
@@ -154,7 +228,7 @@ public class SQLCaseExpr extends SQLExprImpl implements Serializable {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((elseExpr == null) ? 0 : elseExpr.hashCode());
-        result = prime * result + ((items == null) ? 0 : items.hashCode());
+        result = prime * result + items.hashCode();
         result = prime * result + ((valueExpr == null) ? 0 : valueExpr.hashCode());
         return result;
     }
@@ -178,11 +252,7 @@ public class SQLCaseExpr extends SQLExprImpl implements Serializable {
         } else if (!elseExpr.equals(other.elseExpr)) {
             return false;
         }
-        if (items == null) {
-            if (other.items != null) {
-                return false;
-            }
-        } else if (!items.equals(other.items)) {
+        if (!items.equals(other.items)) {
             return false;
         }
         if (valueExpr == null) {
@@ -195,4 +265,44 @@ public class SQLCaseExpr extends SQLExprImpl implements Serializable {
         return true;
     }
 
+
+    public SQLCaseExpr clone() {
+        SQLCaseExpr x = new SQLCaseExpr();
+
+        for (Item item : items) {
+            x.addItem(item.clone());
+        }
+
+        if (valueExpr != null) {
+            x.setValueExpr(valueExpr.clone());
+        }
+
+        if (elseExpr != null) {
+            x.setElseExpr(elseExpr.clone());
+        }
+
+        return x;
+    }
+
+    public SQLDataType computeDataType() {
+        for (Item item : items) {
+            SQLExpr expr = item.getValueExpr();
+            if (expr != null) {
+                SQLDataType dataType = expr.computeDataType();
+                if (dataType != null) {
+                    return dataType;
+                }
+            }
+        }
+
+        if(elseExpr != null) {
+            return elseExpr.computeDataType();
+        }
+
+        return null;
+    }
+
+    public String toString() {
+        return SQLUtils.toSQLString(this, (DbType)null);
+    }
 }

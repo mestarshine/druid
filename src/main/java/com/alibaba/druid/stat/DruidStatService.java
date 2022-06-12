@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import com.alibaba.druid.DbType;
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.visitor.SchemaStatVisitor;
@@ -42,7 +43,7 @@ import com.alibaba.druid.util.StringUtils;
 /**
  * 注意：避免直接调用Druid相关对象例如DruidDataSource等，相关调用要到DruidStatManagerFacade里用反射实现
  * 
- * @author sandzhang<sandzhangtoo@gmail.com>
+ * @author sandzhang[sandzhangtoo@gmail.com]
  */
 public final class DruidStatService implements DruidStatServiceMBean {
 
@@ -59,7 +60,9 @@ public final class DruidStatService implements DruidStatServiceMBean {
 
     private final static int              DEFAULT_PAGE           = 1;
     private final static int              DEFAULT_PER_PAGE_COUNT = Integer.MAX_VALUE;
-    private static final String           DEFAULT_ORDER_TYPE     = "asc";
+    private static final String           ORDER_TYPE_DESC        = "desc";
+    private static final String           ORDER_TYPE_ASC         = "asc";
+    private static final String           DEFAULT_ORDER_TYPE     = ORDER_TYPE_ASC;
     private static final String           DEFAULT_ORDERBY        = "SQL";
 
     private DruidStatService(){
@@ -147,7 +150,7 @@ public final class DruidStatService implements DruidStatServiceMBean {
         }
 
         if (url.startsWith("/weburi-") && url.indexOf(".json") > 0) {
-            String uri = StringUtils.subString(url, "weburi-", ".json");
+            String uri = StringUtils.subString(url, "weburi-", ".json", true);
             return returnJSONResult(RESULT_CODE_SUCCESS, getWebURIStatData(uri));
         }
 
@@ -220,7 +223,7 @@ public final class DruidStatService implements DruidStatServiceMBean {
         Integer page = DEFAULT_PAGE;
         Integer perPageCount = DEFAULT_PER_PAGE_COUNT;
         if (parameters == null) {
-            orderBy = DEFAULT_ORDER_TYPE;
+            orderBy = DEFAULT_ORDERBY;
             orderType = DEFAULT_ORDER_TYPE;
             page = DEFAULT_PAGE;
             perPageCount = DEFAULT_PER_PAGE_COUNT;
@@ -241,13 +244,13 @@ public final class DruidStatService implements DruidStatServiceMBean {
         orderBy = orderBy == null ? DEFAULT_ORDERBY : orderBy;
         orderType = orderType == null ? DEFAULT_ORDER_TYPE : orderType;
 
-        if (!"desc".equals(orderType)) {
-            orderType = DEFAULT_ORDER_TYPE;
+        if (!ORDER_TYPE_DESC.equals(orderType)) {
+            orderType = ORDER_TYPE_ASC;
         }
 
         // orderby the statData array
-        if (orderBy != null && orderBy.trim().length() != 0) {
-            Collections.sort(array, new MapComparator<String, Object>(orderBy, DEFAULT_ORDER_TYPE.equals(orderType)));
+        if (orderBy.trim().length() != 0) {
+            Collections.sort(array, new MapComparator<String, Object>(orderBy, ORDER_TYPE_DESC.equals(orderType)));
         }
 
         // page
@@ -310,7 +313,7 @@ public final class DruidStatService implements DruidStatServiceMBean {
             return returnJSONResult(RESULT_CODE_ERROR, null);
         }
 
-        String dbType = (String) map.get("DbType");
+        DbType dbType = DbType.of((String) map.get("DbType"));
         String sql = (String) map.get("SQL");
 
         map.put("formattedSql", SQLUtils.format(sql, dbType));

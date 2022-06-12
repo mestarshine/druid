@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,22 @@
  * limitations under the License.
  */
 package com.alibaba.druid.support.http;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponseWrapper;
 
 import com.alibaba.druid.filter.stat.StatFilterContext;
 import com.alibaba.druid.support.http.stat.WebAppStat;
@@ -30,26 +46,11 @@ import com.alibaba.druid.util.DruidWebUtils;
 import com.alibaba.druid.util.PatternMatcher;
 import com.alibaba.druid.util.ServletPathMatcher;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 /**
  * 用于配置Web和Druid数据源之间的管理关联监控统计
  * 
- * @author wenshao <szujobs@htomail.com>
- * @author Zhangming Qi <qizhanming@gmail.com>
+ * @author wenshao [szujobs@htomail.com]
+ * @author Zhangming Qi [qizhanming@gmail.com]
  */
 public class WebStatFilter extends AbstractWebStatImpl implements Filter {
 
@@ -185,7 +186,7 @@ public class WebStatFilter extends AbstractWebStatImpl implements Filter {
     }
 
     public boolean isExclusion(String requestURI) {
-        if (excludesPattern == null) {
+        if (excludesPattern == null || requestURI == null) {
             return false;
         }
 
@@ -327,6 +328,7 @@ public class WebStatFilter extends AbstractWebStatImpl implements Filter {
             this.status = statusCode;
         }
 
+        @SuppressWarnings("deprecation")
         public void setStatus(int statusCode, String statusMessage) {
             super.setStatus(statusCode, statusMessage);
             this.status = statusCode;

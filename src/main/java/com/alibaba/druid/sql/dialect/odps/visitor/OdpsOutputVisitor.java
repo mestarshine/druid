@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,46 +15,23 @@
  */
 package com.alibaba.druid.sql.dialect.odps.visitor;
 
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.ast.*;
+import com.alibaba.druid.sql.ast.expr.SQLCharExpr;
+import com.alibaba.druid.sql.ast.expr.SQLDecimalExpr;
+import com.alibaba.druid.sql.ast.expr.SQLMethodInvokeExpr;
+import com.alibaba.druid.sql.ast.statement.*;
+import com.alibaba.druid.sql.ast.statement.SQLJoinTableSource.JoinType;
+import com.alibaba.druid.sql.dialect.hive.stmt.HiveLoadDataStatement;
+import com.alibaba.druid.sql.dialect.hive.visitor.HiveOutputVisitor;
+import com.alibaba.druid.sql.dialect.odps.ast.*;
+
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.alibaba.druid.sql.ast.SQLDataType;
-import com.alibaba.druid.sql.ast.SQLHint;
-import com.alibaba.druid.sql.ast.SQLOrderBy;
-import com.alibaba.druid.sql.ast.SQLSetQuantifier;
-import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.expr.SQLCaseExpr;
-import com.alibaba.druid.sql.ast.expr.SQLMethodInvokeExpr;
-import com.alibaba.druid.sql.ast.statement.SQLAssignItem;
-import com.alibaba.druid.sql.ast.statement.SQLColumnDefinition;
-import com.alibaba.druid.sql.ast.statement.SQLCreateTableStatement;
-import com.alibaba.druid.sql.ast.statement.SQLJoinTableSource;
-import com.alibaba.druid.sql.ast.statement.SQLJoinTableSource.JoinType;
-import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
-import com.alibaba.druid.sql.ast.statement.SQLSubqueryTableSource;
-import com.alibaba.druid.sql.ast.statement.SQLTableElement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsAddStatisticStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsAnalyzeTableStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsCreateTableStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsDescStmt;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsGrantStmt;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsInsert;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsInsertStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsListStmt;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsReadStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsRemoveStatisticStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsSelectQueryBlock;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsSetLabelStatement;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsShowGrantsStmt;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsShowPartitionsStmt;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsShowStatisticStmt;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsStatisticClause;
-import com.alibaba.druid.sql.dialect.odps.ast.OdpsUDTFSQLSelectItem;
-import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
-
-public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVisitor {
-
+public class OdpsOutputVisitor extends HiveOutputVisitor implements OdpsASTVisitor {
     private Set<String> builtInFunctions = new HashSet<String>();
 
     {
@@ -75,14 +52,32 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     public OdpsOutputVisitor(Appendable appender){
-        super(appender);
+        super(appender, DbType.odps);
     }
 
     public boolean visit(OdpsCreateTableStatement x) {
-        if (x.isIfNotExiists()) {
-            print0(ucase ? "CREATE TABLE IF NOT EXISTS " : "create table if not exists ");
+        List<SQLCommentHint> headHints = x.getHeadHintsDirect();
+        if (headHints != null) {
+            for (SQLCommentHint hint : headHints) {
+                visit((SQLCommentHint) hint);
+                println();
+            }
+        }
+
+        if (x.hasBeforeComment()) {
+            printlnComments(x.getBeforeCommentsDirect());
+        }
+
+        print0(ucase ? "CREATE " : "create ");
+
+        if (x.isExternal()) {
+            print0(ucase ? "EXTERNAL " : "external ");
+        }
+
+        if (x.isIfNotExists()) {
+            print0(ucase ? "TABLE IF NOT EXISTS " : "table if not exists ");
         } else {
-            print0(ucase ? "CREATE TABLE " : "create table ");
+            print0(ucase ? "TABLE " : "table ");
         }
 
         x.getName().accept(this);
@@ -92,13 +87,20 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             x.getLike().accept(this);
         }
 
-        int size = x.getTableElementList().size();
+        final List<SQLTableElement> tableElementList = x.getTableElementList();
+        int size = tableElementList.size();
         if (size > 0) {
             print0(" (");
-            incrementIndent();
+            
+            if (this.isPrettyFormat() && x.hasBodyBeforeComment()) {
+                print(' ');
+                printlnComment(x.getBodyBeforeCommentsDirect());
+            }
+            
+            this.indentCount++;
             println();
             for (int i = 0; i < size; ++i) {
-                SQLTableElement element = x.getTableElementList().get(i);
+                SQLTableElement element = tableElementList.get(i);
                 element.accept(this);
 
                 if (i != size - 1) {
@@ -106,14 +108,14 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
                 }
                 if (this.isPrettyFormat() && element.hasAfterComment()) {
                     print(' ');
-                    printComment(element.getAfterCommentsDirect(), "\n");
+                    printlnComment(element.getAfterCommentsDirect());
                 }
 
                 if (i != size - 1) {
                     println();
                 }
             }
-            decrementIndent();
+            this.indentCount--;
             println();
             print(')');
         }
@@ -128,7 +130,7 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
         if (partitionSize > 0) {
             println();
             print0(ucase ? "PARTITIONED BY (" : "partitioned by (");
-            incrementIndent();
+            this.indentCount++;
             println();
             for (int i = 0; i < partitionSize; ++i) {
                 SQLColumnDefinition column = x.getPartitionColumns().get(i);
@@ -139,16 +141,51 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
                 }
                 if (this.isPrettyFormat() && column.hasAfterComment()) {
                     print(' ');
-                    printComment(column.getAfterCommentsDirect(), "\n");
+                    printlnComment(column.getAfterCommentsDirect());
                 }
 
                 if (i != partitionSize - 1) {
                     println();
                 }
             }
-            decrementIndent();
+            this.indentCount--;
             println();
             print(')');
+        }
+
+        List<SQLSelectOrderByItem> clusteredBy = x.getClusteredBy();
+        if (clusteredBy.size() > 0) {
+            println();
+            if (x.getClusteringType() == ClusteringType.Range) {
+                print0(ucase ? "RANGE " : "range ");
+            }
+            print0(ucase ? "CLUSTERED BY (" : "clustered by (");
+            printAndAccept(clusteredBy, ",");
+            print(')');
+        }
+
+        List<SQLSelectOrderByItem> sortedBy = x.getSortedBy();
+        if (sortedBy.size() > 0) {
+            println();
+            print0(ucase ? "SORTED BY (" : "sorted by (");
+            printAndAccept(sortedBy, ", ");
+            print(')');
+        }
+
+        int buckets = x.getBuckets();
+        if (buckets > 0) {
+            println();
+            print0(ucase ? "INTO " : "into ");
+            print(buckets);
+            print0(ucase ? " BUCKETS" : " buckets");
+        }
+
+        int shards = x.getShards();
+        if (shards > 0) {
+            println();
+            print0(ucase ? "INTO " : "into ");
+            print(shards);
+            print0(ucase ? " SHARDS" : " shards");
         }
 
         if (x.getLifecycle() != null) {
@@ -157,157 +194,96 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             x.getLifecycle().accept(this);
         }
 
-        if (x.getSelect() != null) {
+        SQLSelect select = x.getSelect();
+        if (select != null) {
             println();
             print0(ucase ? "AS" : "as");
             println();
-            x.getSelect().accept(this);
+            select.accept(this);
         }
 
-        return false;
-    }
-
-    @Override
-    public void endVisit(OdpsCreateTableStatement x) {
-        super.endVisit((SQLCreateTableStatement) x);
-    }
-
-    public SQLStatement parseInsert() {
-        OdpsInsertStatement stmt = new OdpsInsertStatement();
-
-        return stmt;
-    }
-
-    @Override
-    public void endVisit(OdpsInsertStatement x) {
-
-    }
-
-    @Override
-    public boolean visit(OdpsInsertStatement x) {
-        if (x.getFrom() != null) {
-            print0(ucase ? "FROM (" : "from (");
-            incrementIndent();
+        SQLExpr storedBy = x.getStoredBy();
+        if (storedBy != null) {
             println();
-            x.getFrom().getSelect().accept(this);
-            decrementIndent();
+            print0(ucase ? "STORED BY " : "stored by ");
+            storedBy.accept(this);
+        }
+
+        SQLExpr storedAs = x.getStoredAs();
+        if (storedAs != null) {
             println();
-            print0(") ");
-            print0(x.getFrom().getAlias());
+            print0(ucase ? "STORED AS " : "stored as ");
+            storedAs.accept(this);
+        }
+
+        List<SQLExpr> withSerdeproperties = x.getWithSerdeproperties();
+        if (withSerdeproperties.size() > 0) {
             println();
-        }
-
-        for (int i = 0; i < x.getItems().size(); ++i) {
-            OdpsInsert insert = x.getItems().get(i);
-            if (i != 0) {
-                println();
-            }
-            insert.accept(this);
-        }
-        return false;
-    }
-
-    @Override
-    public void endVisit(OdpsInsert x) {
-
-    }
-
-    @Override
-    public boolean visit(OdpsInsert x) {
-        if (x.hasBeforeComment()) {
-            printComment(x.getBeforeCommentsDirect(), "\n");
-            println();
-        }
-        if (x.isOverwrite()) {
-            print0(ucase ? "INSERT OVERWRITE TABLE " : "insert overwrite table ");
-        } else {
-            print0(ucase ? "INSERT INTO TABLE " : "insert into table ");
-        }
-        x.getTableSource().accept(this);
-
-        int partitions = x.getPartitions().size();
-        if (partitions > 0) {
-            print0(ucase ? " PARTITION (" : " partition (");
-            for (int i = 0; i < partitions; ++i) {
-                if (i != 0) {
-                    print0(", ");
-                }
-
-                SQLAssignItem assign = x.getPartitions().get(i);
-                assign.getTarget().accept(this);
-
-                if (assign.getValue() != null) {
-                    print('=');
-                    assign.getValue().accept(this);
-                }
-            }
+            print0(ucase ? "WITH SERDEPROPERTIES (" : "with serdeproperties (");
+            printAndAccept(withSerdeproperties, ", ");
             print(')');
         }
-        println();
-        x.getQuery().accept(this);
+
+        SQLExpr location = x.getLocation();
+        if (location != null) {
+            println();
+            print0(ucase ? "LOCATION " : "location ");
+            location.accept(this);
+        }
+
+        this.printTblProperties(x);
+
+        SQLExpr using = x.getUsing();
+        if (using != null) {
+            println();
+            print0(ucase ? "USING " : "using ");
+            using.accept(this);
+        }
 
         return false;
     }
 
-    public boolean visit(SQLCaseExpr x) {
-        incrementIndent();
-        print0(ucase ? "CASE " : "case ");
-        if (x.getValueExpr() != null) {
-            x.getValueExpr().accept(this);
-            println();
-        }
-
-        for (int i = 0, size = x.getItems().size(); i < size; ++i) {
-            println();
-            x.getItems().get(i).accept(this);
-        }
-
-        if (x.getElseExpr() != null) {
-            println();
-            print0(ucase ? "ELSE " : "else ");
-            x.getElseExpr().accept(this);
-        }
-
-        decrementIndent();
-        println();
-        print0(ucase ? "END" : "end");
+    public boolean visit(SQLDecimalExpr x) {
+        BigDecimal value = x.getValue();
+        print(value.toString());
+        print("BD");
 
         return false;
     }
 
-    protected void printSelectList(List<SQLSelectItem> selectList) {
-        incrementIndent();
-        for (int i = 0, size = selectList.size(); i < size; ++i) {
-            SQLSelectItem selectItem = selectList.get(i);
-
-            if (i != 0) {
-                SQLSelectItem preSelectItem = selectList.get(i - 1);
-                if (preSelectItem.hasAfterComment()) {
-                    print(' ');
-                    printComment(preSelectItem.getAfterCommentsDirect(), "\n");
-                }
-
-                println();
-                print0(", ");
-            }
-
-            selectItem.accept(this);
-
-            if (i == selectList.size() - 1 && selectItem.hasAfterComment()) {
-                print(' ');
-                printComment(selectItem.getAfterCommentsDirect(), "\n");
-            }
-        }
-        decrementIndent();
-    }
+//    protected void printSelectList(List<SQLSelectItem> selectList) {
+//        this.indentCount++;
+//        for (int i = 0, size = selectList.size(); i < size; ++i) {
+//            SQLSelectItem selectItem = selectList.get(i);
+//
+//            if (i != 0) {
+//                SQLSelectItem preSelectItem = selectList.get(i - 1);
+//                if (preSelectItem.hasAfterComment()) {
+//                    print(' ');
+//                    printlnComment(preSelectItem.getAfterCommentsDirect());
+//                }
+//
+//                println();
+//                print0(", ");
+//            }
+//
+//            selectItem.accept(this);
+//
+//            if (i == selectList.size() - 1 && selectItem.hasAfterComment()) {
+//                print(' ');
+//                printlnComments(selectItem.getAfterCommentsDirect());
+//            }
+//        }
+//        this.indentCount--;
+//    }
 
     @Override
     public boolean visit(SQLSubqueryTableSource x) {
         print('(');
-        incrementIndent();
+        this.indentCount++;
         println();
         x.getSelect().accept(this);
-        decrementIndent();
+        this.indentCount--;
         println();
         print(')');
 
@@ -321,7 +297,13 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
 
     @Override
     public boolean visit(SQLJoinTableSource x) {
-        x.getLeft().accept(this);
+        SQLTableSource left = x.getLeft();
+        left.accept(this);
+
+        if (left.hasAfterComment() && isPrettyFormat()) {
+            println();
+            printlnComment(left.getAfterCommentsDirect());
+        }
 
         if (x.getJoinType() == JoinType.COMMA) {
             print(',');
@@ -335,9 +317,9 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
         if (x.getCondition() != null) {
             println();
             print0(ucase ? "ON " : "on ");
-            incrementIndent();
+            this.indentCount++;
             x.getCondition().accept(this);
-            decrementIndent();
+            this.indentCount--;
         }
 
         if (x.getUsing().size() > 0) {
@@ -351,12 +333,13 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             print0(x.getAlias());
         }
 
+        SQLJoinTableSource.UDJ udj = x.getUdj();
+        if (udj != null) {
+            println();
+            udj.accept(this);
+        }
+
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsUDTFSQLSelectItem x) {
-
     }
 
     @Override
@@ -368,7 +351,7 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
 
         int aliasSize = x.getAliasList().size();
         if (aliasSize > 5) {
-            incrementIndent();
+            this.indentCount++;
             println();
         }
 
@@ -384,7 +367,7 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
         }
 
         if (aliasSize > 5) {
-            decrementIndent();
+            this.indentCount--;
             println();
         }
         print(')');
@@ -393,32 +376,21 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsShowPartitionsStmt x) {
+    public boolean visit(SQLShowStatisticStmt x) {
+        print0(ucase ? "SHOW STATISTIC" : "show statistic");
+        final SQLExprTableSource tableSource = x.getTableSource();
+        if (tableSource != null) {
+            print(' ');
+            tableSource.accept(this);
+        }
 
-    }
-
-    @Override
-    public boolean visit(OdpsShowPartitionsStmt x) {
-        print0(ucase ? "SHOW PARTITIONS " : "show partitions ");
-        x.getTableSource().accept(this);
+        List<SQLAssignItem> partitions = x.getPartitions();
+        if (!partitions.isEmpty()) {
+            print0(ucase ? " PARTITION (" : " partition (");
+            printAndAccept(partitions, ", ");
+            print(')');
+        }
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsShowStatisticStmt x) {
-
-    }
-
-    @Override
-    public boolean visit(OdpsShowStatisticStmt x) {
-        print0(ucase ? "SHOW STATISTIC " : "show statistic ");
-        x.getTableSource().accept(this);
-        return false;
-    }
-
-    @Override
-    public void endVisit(OdpsSetLabelStatement x) {
-
     }
 
     @Override
@@ -444,20 +416,14 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsSelectQueryBlock x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsSelectQueryBlock x) {
         if (isPrettyFormat() && x.hasBeforeComment()) {
-            printComment(x.getBeforeCommentsDirect(), "\n");
-            println();
+            printlnComments(x.getBeforeCommentsDirect());
         }
 
         print0(ucase ? "SELECT " : "select ");
 
-        List<SQLHint> hints = x.getHintsDirect();
+        List<SQLCommentHint> hints = x.getHintsDirect();
         if (hints != null) {
             printAndAccept(hints, " ");
             print(' ');
@@ -473,24 +439,25 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
 
         printSelectList(x.getSelectList());
 
-        if (x.getFrom() != null) {
+        SQLTableSource from = x.getFrom();
+        if (from != null) {
             println();
             print0(ucase ? "FROM " : "from ");
-            x.getFrom().accept(this);
+            from.accept(this);
         }
 
-        if (x.getWhere() != null) {
+        SQLExpr where = x.getWhere();
+        if (where != null) {
             println();
             print0(ucase ? "WHERE " : "where ");
-            if (x.getWhere().hasBeforeComment() && isPrettyFormat()) {
+            if (where.hasBeforeComment() && isPrettyFormat()) {
                 printlnComments(x.getWhere().getBeforeCommentsDirect());
             }
 
-            x.getWhere().setParent(x);
-            x.getWhere().accept(this);
-            if (x.getWhere().hasAfterComment() && isPrettyFormat()) {
+            where.accept(this);
+            if (where.hasAfterComment() && isPrettyFormat()) {
                 print(' ');
-                printComment(x.getWhere().getAfterCommentsDirect(), "\n");
+                printlnComment(x.getWhere().getAfterCommentsDirect());
             }
         }
 
@@ -499,25 +466,47 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             x.getGroupBy().accept(this);
         }
 
+        final List<SQLWindow> windows = x.getWindows();
+        if (windows != null && windows.size() > 0) {
+            println();
+            print0(ucase ? "WINDOW " : "window ");
+            printAndAccept(windows, ", ");
+        }
+
         if (x.getOrderBy() != null) {
             println();
             x.getOrderBy().accept(this);
         }
 
-        if (x.getDistributeBy() != null) {
+        SQLZOrderBy zorderBy = x.getZOrderBy();
+        if (zorderBy != null) {
+            println();
+            zorderBy.accept(this);
+        }
+
+        final List<SQLSelectOrderByItem> distributeBy = x.getDistributeByDirect();
+        if (distributeBy.size() > 0) {
             println();
             print0(ucase ? "DISTRIBUTE BY " : "distribute by ");
-            x.getDistributeBy().accept(this);
+            printAndAccept(distributeBy, ", ");
+        }
 
-            if (!x.getSortBy().isEmpty()) {
-                print0(ucase ? " SORT BY " : " sort by ");
-                printAndAccept(x.getSortBy(), ", ");
-            }
+        final List<SQLSelectOrderByItem> sortBy = x.getSortByDirect();
+        if (!sortBy.isEmpty()) {
+            println();
+            print0(ucase ? "SORT BY " : "sort by ");
+            printAndAccept(sortBy, ", ");
+        }
+
+        final List<SQLSelectOrderByItem> clusterBy = x.getClusterByDirect();
+        if (clusterBy.size() > 0) {
+            println();
+            print0(ucase ? "CLUSTER BY " : "cluster by ");
+            printAndAccept(clusterBy, ", ");
         }
 
         if (x.getLimit() != null) {
             println();
-            print0(ucase ? "LIMIT " : "limit ");
             x.getLimit().accept(this);
         }
 
@@ -528,43 +517,34 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
         int itemSize = x.getItems().size();
         if (itemSize > 0) {
             print0(ucase ? "ORDER BY " : "order by ");
-            incrementIndent();
+            this.indentCount++;
             for (int i = 0; i < itemSize; ++i) {
                 if (i != 0) {
                     println(", ");
                 }
                 x.getItems().get(i).accept(this);
             }
-            decrementIndent();
+            this.indentCount--;
         }
 
         return false;
     }
 
-    @Override
-    public void endVisit(OdpsAnalyzeTableStatement x) {
-
-    }
-
-    @Override
-    public boolean visit(OdpsAnalyzeTableStatement x) {
-        print0(ucase ? "ANALYZE TABLE " : "analyze table ");
-        x.getTable().accept(this);
-
-        if (x.getPartition().size() > 0) {
-            print0(ucase ? " PARTITION (" : " partition (");
-            printAndAccept(x.getPartition(), ", ");
-            print(')');
+    public boolean visit(SQLZOrderBy x) {
+        int itemSize = x.getItems().size();
+        if (itemSize > 0) {
+            print0(ucase ? "ZORDER BY " : "zorder by ");
+            this.indentCount++;
+            for (int i = 0; i < itemSize; ++i) {
+                if (i != 0) {
+                    println(", ");
+                }
+                x.getItems().get(i).accept(this);
+            }
+            this.indentCount--;
         }
 
-        print0(ucase ? " COMPUTE STATISTICS" : " compute statistics");
-
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsAddStatisticStatement x) {
-
     }
 
     @Override
@@ -578,11 +558,6 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsRemoveStatisticStatement x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsRemoveStatisticStatement x) {
         print0(ucase ? "REMOVE STATISTIC " : "remove statistic ");
         x.getTable().accept(this);
@@ -593,19 +568,9 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsStatisticClause.TableCount x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsStatisticClause.TableCount x) {
         print0(ucase ? "TABLE_COUNT" : "table_count");
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsStatisticClause.ExpressionCondition x) {
-
     }
 
     @Override
@@ -616,11 +581,6 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsStatisticClause.NullValue x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsStatisticClause.NullValue x) {
         print0(ucase ? "NULL_VALUE " : "null_value ");
         x.getColumn().accept(this);
@@ -628,8 +588,10 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsStatisticClause.ColumnSum x) {
-
+    public boolean visit(OdpsStatisticClause.DistinctValue x) {
+        print0(ucase ? "DISTINCT_VALUE " : "distinct_value ");
+        x.getColumn().accept(this);
+        return false;
     }
 
     @Override
@@ -640,20 +602,10 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsStatisticClause.ColumnMax x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsStatisticClause.ColumnMax x) {
         print0(ucase ? "COLUMN_MAX " : "column_max ");
         x.getColumn().accept(this);
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsStatisticClause.ColumnMin x) {
-
     }
 
     @Override
@@ -664,12 +616,19 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsReadStatement x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsReadStatement x) {
+        List<SQLCommentHint> headHints = x.getHeadHintsDirect();
+        if (headHints != null) {
+            for (SQLCommentHint hint : headHints) {
+                visit((SQLCommentHint) hint);
+                println();
+            }
+        }
+
+        if (x.hasBeforeComment()) {
+            printlnComments(x.getBeforeCommentsDirect());
+        }
+
         print0(ucase ? "READ " : "read ");
         x.getTable().accept(this);
 
@@ -693,16 +652,13 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
         return false;
     }
 
-    public boolean visit(SQLMethodInvokeExpr x) {
-        if (x.getOwner() != null) {
-            x.getOwner().accept(this);
+    protected void printMethodOwner(SQLExpr owner) {
+        owner.accept(this);
+        if (owner instanceof SQLMethodInvokeExpr) {
+            print('.');
+        } else {
             print(':');
         }
-        printFunctionName(x.getMethodName());
-        print('(');
-        printAndAccept(x.getParameters(), ", ");
-        print(')');
-        return false;
     }
 
     protected void printJoinType(JoinType joinType) {
@@ -719,7 +675,12 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
 
     public boolean visit(SQLDataType x) {
         String dataTypeName = x.getName();
-        print0(ucase ? dataTypeName.toUpperCase() : dataTypeName.toLowerCase());
+        if (dataTypeName.indexOf('<') != -1 || dataTypeName.equals("Object")) {
+            print0(dataTypeName);
+        } else {
+            print0(ucase ? dataTypeName.toUpperCase() : dataTypeName.toLowerCase());
+        }
+
         if (x.getArguments().size() > 0) {
             print('(');
             printAndAccept(x.getArguments(), ", ");
@@ -730,6 +691,10 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     protected void printFunctionName(String name) {
+        if (name == null) {
+            return;
+        }
+
         String upperName = name.toUpperCase();
         if (builtInFunctions.contains(upperName)) {
             print0(ucase ? upperName : name);
@@ -739,28 +704,45 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
     }
 
     @Override
-    public void endVisit(OdpsShowGrantsStmt x) {
-
-    }
-
-    @Override
     public boolean visit(OdpsShowGrantsStmt x) {
-        print0(ucase ? "SHOW GRANTS" : "show grants");
-        if (x.getUser() != null) {
-            print0(ucase ? " FOR " : " for ");
-            x.getUser().accept(this);
+        List<SQLCommentHint> headHints = x.getHeadHintsDirect();
+        if (headHints != null) {
+            for (SQLCommentHint hint : headHints) {
+                visit((SQLCommentHint) hint);
+                println();
+            }
         }
 
-        if (x.getObjectType() != null) {
-            print0(ucase ? " ON TYPE " : " on type ");
-            x.getObjectType().accept(this);
+        if (x.hasBeforeComment()) {
+            printlnComments(x.getBeforeCommentsDirect());
+        }
+
+        if (x.isLabel()) {
+            print0(ucase ? "SHOW LABEL GRANTS" : "show label grants");
+
+            if (x.getObjectType() != null) {
+                print0(ucase ? " ON TABLE " : " on table ");
+                x.getObjectType().accept(this);
+            }
+
+            if (x.getUser() != null) {
+                print0(ucase ? " FOR USER " : " for user ");
+                x.getUser().accept(this);
+            }
+        } else {
+            print0(ucase ? "SHOW GRANTS" : "show grants");
+
+            if (x.getUser() != null) {
+                print0(ucase ? " FOR " : " for ");
+                x.getUser().accept(this);
+            }
+
+            if (x.getObjectType() != null) {
+                print0(ucase ? " ON TYPE " : " on type ");
+                x.getObjectType().accept(this);
+            }
         }
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsListStmt x) {
-
     }
 
     @Override
@@ -770,11 +752,6 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             x.getObject().accept(this);
         }
         return false;
-    }
-
-    @Override
-    public void endVisit(OdpsGrantStmt x) {
-
     }
 
     @Override
@@ -791,13 +768,13 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             printAndAccept(x.getPrivileges(), ", ");
         }
 
-        if (x.getOn() != null) {
+        if (x.getResource() != null) {
             print0(ucase ? " ON " : " on ");
-            if (x.getObjectType() != null) {
-                print0(ucase ? x.getObjectType().name() : x.getObjectType().name().toLowerCase());
+            if (x.getResourceType() != null) {
+                print0(ucase ? x.getResourceType().name() : x.getResourceType().name().toLowerCase());
                 print(' ');
             }
-            x.getOn().accept(this);
+            x.getResource().accept(this);
             
             if (x.getColumns().size() > 0) {
                 print('(');
@@ -806,13 +783,13 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
             }
         }
 
-        if (x.getTo() != null) {
+        if (x.getUsers() != null) {
             print0(ucase ? " TO " : " to ");
             if (x.getSubjectType() != null) {
                 print0(x.getSubjectType().name());
                 print(' ');
             }
-            x.getTo().accept(this);
+            printAndAccept(x.getUsers(), ",");
         }
 
         if (x.getExpire() != null) {
@@ -822,29 +799,305 @@ public class OdpsOutputVisitor extends SQLASTOutputVisitor implements OdpsASTVis
 
         return false;
     }
+    
+    public boolean visit(SQLCharExpr x, boolean parameterized) {
+        String text = x.getText();
+        if (text == null) {
+            print0(ucase ? "NULL" : "null");
+        } else {
+            StringBuilder buf = new StringBuilder(text.length() + 2);
+            buf.append('\'');
+            for (int i = 0; i < text.length(); ++i) {
+                char ch = text.charAt(i);
+                switch (ch) {
+                    case '\\':
+                        buf.append("\\\\");
+                        break;
+                    case '\'':
+                        buf.append("\\'");
+                        break;
+                    case '\0':
+                        buf.append("\\0");
+                        break;
+                    case '\n':
+                        buf.append("\\n");
+                        break;
+                    default:
+                        buf.append(ch);
+                        break;
+                }
+            }
+            buf.append('\'');
 
-    @Override
-    public void endVisit(OdpsDescStmt x) {
-        
+            print0(buf.toString());
+        }
+
+        return false;
     }
 
     @Override
-    public boolean visit(OdpsDescStmt x) {
-        print0(ucase ? "DESC " : "desc ");
-        if (x.getObjectType() != null) {
-            print0(x.getObjectType().name());
-            print(' ');
+    public boolean visit(SQLAlterTableRenameColumn x) {
+        print0(ucase ? "CHANGE COLUMN " : "change column ");
+        x.getColumn().accept(this);
+        print0(ucase ? " RENAME TO " : " rename to ");
+        x.getTo().accept(this);
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsAddTableStatement x) {
+        print0(ucase ? "ADD TABLE " : "add table ");
+        x.getTable().accept(this);
+
+        List<SQLAssignItem> partitions = x.getPartitions();
+        if (partitions.size() > 0) {
+            print0(ucase ? " PARTITION (" : " partition (");
+            printAndAccept(partitions, ", ");
+            print(')');
         }
-        
-        if(x.getObject() != null) {
-            x.getObject().accept(this);
+
+        SQLExpr comment = x.getComment();
+        if (comment != null) {
+            print0(ucase ? " COMMENT " : " comment ");
+            printExpr(comment);
         }
-        
+
+        if (x.isForce()) {
+            print0(" -f");
+        }
+
+        SQLName toPackage = x.getToPackage();
+        if (toPackage != null) {
+            print0(ucase ? " TO PACKAGE " : " to package ");
+            printExpr(toPackage);
+
+            List<SQLPrivilegeItem> privileges = x.getPrivileges();
+            if (!privileges.isEmpty()) {
+                print0(ucase ? " WITH PRIVILEGES " : " with privileges ");
+                printAndAccept(privileges, ", ");
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsAddFileStatement x) {
+        print0(ucase ? "ADD " : "add ");
+
+        OdpsAddFileStatement.FileType type = x.getType();
+        switch (type) {
+            case JAR:
+                print0(ucase ? "JAR " : "jar ");
+                break;
+            case ARCHIVE:
+                print0(ucase ? "ARCHIVE " : "archive ");
+                break;
+            case PY:
+                print0(ucase ? "PY " : "py ");
+                break;
+            default:
+                print0(ucase ? "FILE " : "file ");
+                break;
+        }
+
+        print0(x.getFile());
+
+        SQLExpr comment = x.getComment();
+        if (comment != null) {
+            print0(ucase ? " COMMENT " : " comment ");
+            printExpr(comment);
+        }
+
+        if (x.isForce()) {
+            print0(" -f");
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsAddUserStatement x) {
+        print0(ucase ? "ADD USER " : "add user ");
+        printExpr(x.getUser());
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsRemoveUserStatement x) {
+        print0(ucase ? "REMOVE USER " : "remove user ");
+        printExpr(x.getUser());
+        return false;
+    }
+
+    @Override
+    public boolean visit(SQLWhoamiStatement x) {
+        print0(ucase ? "WHOAMI" : "whoami");
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsAlterTableSetChangeLogs x) {
+        print0(ucase ? "SET CHANGELOGS " : "set changelogs ");
+        x.getValue().accept(this);
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsAlterTableSetFileFormat x) {
+        print0(ucase ? "SET FILEFORMAT " : "set fileformat ");
+        x.getValue().accept(this);
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsCountStatement x) {
+        List<SQLCommentHint> headHints = x.getHeadHintsDirect();
+        if (headHints != null) {
+            for (SQLCommentHint hint : headHints) {
+                visit((SQLCommentHint) hint);
+                println();
+            }
+        }
+
+        if (x.hasBeforeComment()) {
+            printlnComments(x.getBeforeCommentsDirect());
+        }
+
+        print0(ucase ? "COUNT " : "count ");
+        x.getTable().accept(this);
+
+        List<SQLAssignItem> partitions = x.getPartitions();
+        if (partitions.size() > 0) {
+            print0(ucase ? " PARTITION (" : " partition (");
+            printAndAccept(partitions, ", ");
+            print(')');
+        }
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsQueryAliasStatement x) {
+        print0(x.getVariant());
+        print0(" := ");
+        x.getStatement().accept(this);
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsTransformExpr x) {
+        print0(ucase ? "TRANSFORM(" : "transform(");
+        printAndAccept(x.getInputColumns(), ", ");
+        print(')');
+
+        SQLExpr using = x.getUsing();
+        if (using != null) {
+            println();
+            print0(ucase ? "USING " : "using ");
+            using.accept(this);
+        }
+
+        List<SQLExpr> resources = x.getResources();
+        if (!resources.isEmpty()) {
+            println();
+            print0(ucase ? "RESOURCES " : "resources ");
+            printAndAccept(resources, ", ");
+        }
+
+        List<SQLColumnDefinition> outputColumns = x.getOutputColumns();
+        if (!outputColumns.isEmpty()) {
+            println();
+            print0(ucase ? "AS (" : "as (");
+            printAndAccept(outputColumns, ", ");
+            print(')');
+        }
+
+        SQLExternalRecordFormat inputRowFormat = x.getInputRowFormat();
+        if (inputRowFormat != null) {
+            println();
+            print0(ucase ? "ROW FORMAT DELIMITED" : "row format delimited");
+            inputRowFormat.accept(this);
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsExstoreStatement x) {
+        print0(ucase ? "EXSTORE " : "exstore ");
+        x.getTable().accept(this);
+        print0(ucase ? " PARTITION (" : " partition (");
+        printAndAccept(x.getPartitions(), ", ");
+        print(')');
+
+        return false;
+    }
+
+    @Override
+    public boolean visit(HiveLoadDataStatement x) {
+        print0(ucase ? "LOAD " : "load ");
+
+        if (x.isOverwrite()) {
+            print0(ucase ? "OVERWRITE " : "overwrite ");
+        }
+
+        print0(ucase ? "INTO TABLE " : "into table ");
+
+        x.getInto().accept(this);
+
         if (x.getPartition().size() > 0) {
             print0(ucase ? " PARTITION (" : " partition (");
             printAndAccept(x.getPartition(), ", ");
             print(')');
         }
+
+        println();
+        print0(ucase ? "LOCATION " : "location ");
+        x.getInpath().accept(this);
+
+        SQLExpr storedBy = x.getStoredBy();
+        if (storedBy != null) {
+            println();
+            print0(ucase ? "STORED BY " : "stored by ");
+            storedBy.accept(this);
+        }
+
+        SQLExpr rowFormat = x.getRowFormat();
+        if (rowFormat != null) {
+            println();
+            print0(ucase ? "ROW FORMAT SERDE " : "row format serde ");
+            rowFormat.accept(this);
+        }
+
+        printSerdeProperties(x.getSerdeProperties());
+
+        SQLExpr storedAs = x.getStoredAs();
+        if (storedAs != null) {
+            println();
+            print0(ucase ? "STORED AS " : "stored as ");
+            printExpr(storedAs);
+        }
+
+        SQLExpr using = x.getUsing();
+        if (using != null) {
+            println();
+            print0(ucase ? "USING " : "using ");
+            printExpr(using);
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean visit(OdpsNewExpr x) {
+        print0("new ");
+        super.visit((SQLMethodInvokeExpr) x);
+        return false;
+    }
+
+    public boolean visit(OdpsInstallPackageStatement x) {
+        print0(ucase ? "INSTALL PACKAGE " : "install package ");
+        printExpr(x.getPackageName());
         return false;
     }
 }

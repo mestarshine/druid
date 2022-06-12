@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import com.alibaba.druid.proxy.jdbc.StatementExecuteType;
 import com.alibaba.druid.util.JMXUtils;
 import com.alibaba.druid.util.Utils;
 
-public final class JdbcSqlStat implements JdbcSqlStatMBean {
+public final class JdbcSqlStat implements JdbcSqlStatMBean, Comparable<JdbcSqlStat> {
 
     private final String                                sql;
     private long                                        sqlHash;
@@ -389,6 +389,8 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
         val.setSql(sql);
         val.setSqlHash(getSqlHash());
         val.setId(id);
+        val.setName(name);
+        val.setFile(file);
         val.setExecuteLastStartTime(executeLastStartTime);
         if (reset) {
             executeLastStartTime = 0;
@@ -592,7 +594,7 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
     
     public long getSqlHash() {
         if (sqlHash == 0) {
-            sqlHash = Utils.murmurhash2_64(sql);
+            sqlHash = Utils.fnv_64(sql);
         }
         return sqlHash;
     }
@@ -657,13 +659,11 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
         // executeBatchSizeMax
         for (;;) {
             int current = executeBatchSizeMaxUpdater.get(this);
-            if (current < batchSize) {
-                if (executeBatchSizeMaxUpdater.compareAndSet(this, current, (int) batchSize)) {
-                    break;
-                } else {
-                    continue;
-                }
-            } else {
+            if (current >= batchSize) {
+                break;
+            }
+
+            if (executeBatchSizeMaxUpdater.compareAndSet(this, current, (int) batchSize)) {
                 break;
             }
         }
@@ -682,13 +682,11 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
 
         for (;;) {
             int max = concurrentMaxUpdater.get(this);
-            if (val > max) {
-                if (concurrentMaxUpdater.compareAndSet(this, max, val)) {
-                    break;
-                } else {
-                    continue;
-                }
-            } else {
+            if (val <= max) {
+                break;
+            }
+
+            if (concurrentMaxUpdater.compareAndSet(this, max, val)) {
                 break;
             }
         }
@@ -763,16 +761,13 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
 
         for (;;) {
             long current = executeSpanNanoMaxUpdater.get(this);
-            if (current < nanoSpan) {
-                if (executeSpanNanoMaxUpdater.compareAndSet(this, current, nanoSpan)) {
-                    // 可能不准确，但是绝大多数情况下都会正确，性能换取一致性
-                    executeNanoSpanMaxOccurTime = System.currentTimeMillis();
+            if (current >= nanoSpan) {
+                break;
+            }
 
-                    break;
-                } else {
-                    continue;
-                }
-            } else {
+            if (executeSpanNanoMaxUpdater.compareAndSet(this, current, nanoSpan)) {
+                // 可能不准确，但是绝大多数情况下都会正确，性能换取一致性
+                executeNanoSpanMaxOccurTime = System.currentTimeMillis();
                 break;
             }
         }
@@ -1062,7 +1057,7 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
     public void addResultSetHoldTimeNano(long statementExecuteNano, long resultHoldTimeNano) {
         resultSetHoldTimeNanoUpdater.addAndGet(this, resultHoldTimeNano);
         executeAndResultSetHoldTimeUpdater.addAndGet(this, statementExecuteNano + resultHoldTimeNano);
-        executeAndResultHoldTimeHistogramRecord((statementExecuteNano + resultHoldTimeNano) / 1000 / 1000);
+        executeAndResultHoldTimeHistogramRecord(statementExecuteNano + resultHoldTimeNano);
         updateCount_0_1_Updater.incrementAndGet(this);
     }
 
@@ -1074,4 +1069,12 @@ public final class JdbcSqlStat implements JdbcSqlStatMBean {
         this.removed = removed;
     }
 
+    @Override
+    public int compareTo(JdbcSqlStat o) {
+        if (o.sqlHash == this.sqlHash) {
+            return 0;
+        }
+        
+        return this.id < o.id ? -1 : 1;
+    }
 }

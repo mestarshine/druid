@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,15 @@
  */
 package com.alibaba.druid.stat;
 
-import com.alibaba.druid.util.Histogram;
-import com.alibaba.druid.util.JMXUtils;
-
-import javax.management.JMException;
-import javax.management.openmbean.CompositeData;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import javax.management.JMException;
+import javax.management.openmbean.CompositeData;
+
+import com.alibaba.druid.util.Histogram;
+import com.alibaba.druid.util.JMXUtils;
 
 public class JdbcStatementStat implements JdbcStatementStatMBean {
 

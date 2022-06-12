@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,14 @@
  */
 package com.alibaba.druid.sql.ast.expr;
 
-import java.io.Serializable;
-
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLExprImpl;
+import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLUnaryExpr extends SQLExprImpl implements Serializable {
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
+
+public class SQLUnaryExpr extends SQLExprImpl implements Serializable, SQLReplaceable {
 
     private static final long serialVersionUID = 1L;
     private SQLExpr           expr;
@@ -33,7 +34,16 @@ public class SQLUnaryExpr extends SQLExprImpl implements Serializable {
 
     public SQLUnaryExpr(SQLUnaryOperator operator, SQLExpr expr){
         this.operator = operator;
-        this.expr = expr;
+        this.setExpr(expr);
+    }
+
+    public SQLUnaryExpr clone() {
+        SQLUnaryExpr x = new SQLUnaryExpr();
+        if (expr != null) {
+            x.setExpr(expr.clone());
+        }
+        x.operator = operator;
+        return x;
     }
 
     public SQLUnaryOperator getOperator() {
@@ -49,15 +59,25 @@ public class SQLUnaryExpr extends SQLExprImpl implements Serializable {
     }
 
     public void setExpr(SQLExpr expr) {
+        if (expr != null) {
+            expr.setParent(this);
+        }
         this.expr = expr;
     }
 
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
-            acceptChild(visitor, this.expr);
+            if (this.expr != null) {
+                this.expr.accept(visitor);
+            }
         }
 
         visitor.endVisit(this);
+    }
+
+    @Override
+    public List<SQLObject> getChildren() {
+        return Collections.<SQLObject>singletonList(this.expr);
     }
 
     @Override
@@ -92,5 +112,26 @@ public class SQLUnaryExpr extends SQLExprImpl implements Serializable {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (this.expr == expr) {
+            setExpr(target);
+            return true;
+        }
+        return false;
+    }
+
+    public SQLDataType computeDataType() {
+        switch (operator) {
+            case Plus:
+            case Negative:
+            case Compl:
+            case Not:
+                return expr.computeDataType();
+            default:
+                return null;
+        }
     }
 }

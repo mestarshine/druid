@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,29 +15,43 @@
  */
 package com.alibaba.druid.sql.ast.statement;
 
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.ast.SQLName;
+import com.alibaba.druid.sql.ast.SQLStatementImpl;
+import com.alibaba.druid.sql.ast.expr.SQLIntegerExpr;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.ast.SQLStatementImpl;
-import com.alibaba.druid.sql.visitor.SQLASTVisitor;
-
 public class SQLTruncateStatement extends SQLStatementImpl {
 
-    protected List<SQLExprTableSource> tableSources     = new ArrayList<SQLExprTableSource>(2);
-
-    private boolean                    purgeSnapshotLog = false;
-
+    protected List<SQLExprTableSource> tableSources               = new ArrayList<SQLExprTableSource>(2);
+    private boolean                    purgeSnapshotLog           = false;
     private boolean                    only;
     private Boolean                    restartIdentity;
     private Boolean                    cascade;
-    
-    public SQLTruncateStatement() {
-        
+
+    // db2
+    private boolean                    dropStorage                = false;
+    private boolean                    reuseStorage               = false;
+    private boolean                    immediate                  = false;
+    private boolean                    ignoreDeleteTriggers       = false;
+    private boolean                    restrictWhenDeleteTriggers = false;
+    private boolean                    continueIdentity           = false;
+    protected boolean                  ifExists                   = false;
+    protected List<SQLAssignItem>      partitions                 = new ArrayList<SQLAssignItem>();
+
+    // adb
+    protected boolean partitionAll = false;
+    protected List<SQLIntegerExpr> partitionsForADB = new ArrayList<SQLIntegerExpr>();
+
+    public SQLTruncateStatement(){
+
     }
-    
-    public SQLTruncateStatement(String dbType) {
-        super (dbType);
+
+    public SQLTruncateStatement(DbType dbType){
+        super(dbType);
     }
 
     public List<SQLExprTableSource> getTableSources() {
@@ -93,4 +107,82 @@ public class SQLTruncateStatement extends SQLStatementImpl {
     public void setCascade(Boolean cascade) {
         this.cascade = cascade;
     }
+
+    public boolean isDropStorage() {
+        return dropStorage;
+    }
+
+    public void setDropStorage(boolean dropStorage) {
+        this.dropStorage = dropStorage;
+    }
+
+    public boolean isReuseStorage() {
+        return reuseStorage;
+    }
+
+    public void setReuseStorage(boolean reuseStorage) {
+        this.reuseStorage = reuseStorage;
+    }
+
+    public boolean isImmediate() {
+        return immediate;
+    }
+
+    public void setImmediate(boolean immediate) {
+        this.immediate = immediate;
+    }
+
+    public boolean isIgnoreDeleteTriggers() {
+        return ignoreDeleteTriggers;
+    }
+
+    public void setIgnoreDeleteTriggers(boolean ignoreDeleteTriggers) {
+        this.ignoreDeleteTriggers = ignoreDeleteTriggers;
+    }
+
+    public boolean isRestrictWhenDeleteTriggers() {
+        return restrictWhenDeleteTriggers;
+    }
+
+    public void setRestrictWhenDeleteTriggers(boolean restrictWhenDeleteTriggers) {
+        this.restrictWhenDeleteTriggers = restrictWhenDeleteTriggers;
+    }
+
+    public boolean isContinueIdentity() {
+        return continueIdentity;
+    }
+
+    public void setContinueIdentity(boolean continueIdentity) {
+        this.continueIdentity = continueIdentity;
+    }
+
+    @Override
+    public List getChildren() {
+        return tableSources;
+    }
+
+    public boolean isIfExists() {
+        return ifExists;
+    }
+
+    public void setIfExists(boolean ifExists) {
+        this.ifExists = ifExists;
+    }
+
+    public List<SQLAssignItem> getPartitions() {
+        return partitions;
+    }
+
+    public boolean isPartitionAll() {
+        return partitionAll;
+    }
+
+    public void setPartitionAll(boolean partitionAll) {
+        this.partitionAll = partitionAll;
+    }
+
+    public List<SQLIntegerExpr> getPartitionsForADB() {
+        return partitionsForADB;
+    }
+
 }

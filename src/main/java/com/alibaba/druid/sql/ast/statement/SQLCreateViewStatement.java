@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,36 +15,80 @@
  */
 package com.alibaba.druid.sql.ast.statement;
 
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.*;
+import com.alibaba.druid.sql.ast.expr.*;
+import com.alibaba.druid.sql.visitor.SQLASTVisitor;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.ast.SQLObjectImpl;
-import com.alibaba.druid.sql.ast.SQLStatementImpl;
-import com.alibaba.druid.sql.ast.expr.SQLCharExpr;
-import com.alibaba.druid.sql.ast.expr.SQLLiteralExpr;
-import com.alibaba.druid.sql.visitor.SQLASTVisitor;
-
-public class SQLCreateViewStatement extends SQLStatementImpl implements SQLDDLStatement {
+public class SQLCreateViewStatement extends SQLStatementImpl implements SQLCreateStatement {
 
     private boolean     orReplace   = false;
-    protected SQLName   name;
+    private boolean     force       = false;
+    // protected SQLName   name;
     protected SQLSelect subQuery;
     protected boolean   ifNotExists = false;
 
-    protected final List<Column> columns = new ArrayList<Column>();
+    protected String    algorithm;
+    protected SQLName   definer;
+    protected String    sqlSecurity;
 
-    private Level with;
+    protected SQLExprTableSource tableSource;
+
+    protected final List<SQLTableElement> columns = new ArrayList<SQLTableElement>();
+
+    private boolean withCheckOption;
+    private boolean withCascaded;
+    private boolean withLocal;
+    private boolean withReadOnly;
 
     private SQLLiteralExpr comment;
+
+    private SQLVariantRefExpr returns; // odps
+    private SQLTableDataType returnsDataType; // odps
+
+    // clickhouse
+    protected boolean onCluster;
+    private SQLName to;
+
+    private SQLBlockStatement script;
 
     public SQLCreateViewStatement(){
 
     }
 
-    public SQLCreateViewStatement(String dbType){
+    public SQLCreateViewStatement(DbType dbType){
         super(dbType);
+    }
+
+    public String computeName() {
+        if (tableSource == null) {
+            return null;
+        }
+
+        SQLExpr expr = tableSource.getExpr();
+        if (expr instanceof SQLName) {
+            String name = ((SQLName) expr).getSimpleName();
+            return SQLUtils.normalize(name);
+        }
+
+        return null;
+    }
+
+    public String getSchema() {
+        SQLName name = getName();
+        if (name == null) {
+            return null;
+        }
+
+        if (name instanceof SQLPropertyExpr) {
+            return ((SQLPropertyExpr) name).getOwnernName();
+        }
+
+        return null;
     }
 
     public boolean isOrReplace() {
@@ -56,19 +100,62 @@ public class SQLCreateViewStatement extends SQLStatementImpl implements SQLDDLSt
     }
 
     public SQLName getName() {
-        return name;
+        if (tableSource == null) {
+            return null;
+        }
+
+        return (SQLName) tableSource.getExpr();
     }
 
     public void setName(SQLName name) {
-        this.name = name;
+        this.setTableSource(new SQLExprTableSource(name));
     }
 
-    public Level getWith() {
-        return with;
+    public void setName(String name) {
+        this.setName(new SQLIdentifierExpr(name));
     }
 
-    public void setWith(Level with) {
-        this.with = with;
+    public SQLExprTableSource getTableSource() {
+        return tableSource;
+    }
+
+    public void setTableSource(SQLExprTableSource tableSource) {
+        if (tableSource != null) {
+            tableSource.setParent(this);
+        }
+        this.tableSource = tableSource;
+    }
+
+    public boolean isWithCheckOption() {
+        return withCheckOption;
+    }
+
+    public void setWithCheckOption(boolean withCheckOption) {
+        this.withCheckOption = withCheckOption;
+    }
+
+    public boolean isWithCascaded() {
+        return withCascaded;
+    }
+
+    public void setWithCascaded(boolean withCascaded) {
+        this.withCascaded = withCascaded;
+    }
+
+    public boolean isWithLocal() {
+        return withLocal;
+    }
+
+    public void setWithLocal(boolean withLocal) {
+        this.withLocal = withLocal;
+    }
+
+    public boolean isWithReadOnly() {
+        return withReadOnly;
+    }
+
+    public void setWithReadOnly(boolean withReadOnly) {
+        this.withReadOnly = withReadOnly;
     }
 
     public SQLSelect getSubQuery() {
@@ -76,11 +163,21 @@ public class SQLCreateViewStatement extends SQLStatementImpl implements SQLDDLSt
     }
 
     public void setSubQuery(SQLSelect subQuery) {
+        if (subQuery != null) {
+            subQuery.setParent(this);
+        }
         this.subQuery = subQuery;
     }
 
-    public List<Column> getColumns() {
+    public List<SQLTableElement> getColumns() {
         return columns;
+    }
+    
+    public void addColumn(SQLTableElement column) {
+        if (column != null) {
+            column.setParent(this);
+        }
+        this.columns.add(column);
     }
 
     public boolean isIfNotExists() {
@@ -102,39 +199,79 @@ public class SQLCreateViewStatement extends SQLStatementImpl implements SQLDDLSt
         this.comment = comment;
     }
 
-    public void output(StringBuffer buf) {
-        buf.append("CREATE VIEW ");
-        this.name.output(buf);
+    public String getAlgorithm() {
+        return algorithm;
+    }
 
-        if (this.columns.size() > 0) {
-            buf.append(" (");
-            for (int i = 0, size = this.columns.size(); i < size; ++i) {
-                if (i != 0) {
-                    buf.append(", ");
-                }
-                this.columns.get(i).output(buf);
-            }
-            buf.append(")");
+    public void setAlgorithm(String algorithm) {
+        this.algorithm = algorithm;
+    }
+
+    public SQLName getDefiner() {
+        return definer;
+    }
+
+    public void setDefiner(SQLName definer) {
+        if (definer != null) {
+            definer.setParent(this);
         }
+        this.definer = definer;
+    }
 
-        buf.append(" AS ");
-        this.subQuery.output(buf);
+    public String getSqlSecurity() {
+        return sqlSecurity;
+    }
 
-        if (this.with != null) {
-            buf.append(" WITH ");
-            buf.append(this.with.name());
-        }
+    public void setSqlSecurity(String sqlSecurity) {
+        this.sqlSecurity = sqlSecurity;
+    }
+
+    public boolean isForce() {
+        return force;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
     }
 
     @Override
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
-            acceptChild(visitor, this.name);
-            acceptChild(visitor, this.columns);
-            acceptChild(visitor, this.comment);
-            acceptChild(visitor, this.subQuery);
+            if (tableSource != null) {
+                tableSource.accept(visitor);
+            }
+
+            for (int i = 0; i < columns.size(); i++) {
+                final SQLTableElement column = columns.get(i);
+                if (column != null) {
+                    column.accept(visitor);
+                }
+            }
+
+            if (comment != null) {
+                comment.accept(visitor);
+            }
+
+            if (subQuery != null) {
+                subQuery.accept(visitor);
+            }
         }
         visitor.endVisit(this);
+    }
+
+    public List<SQLObject> getChildren() {
+        List<SQLObject> children = new ArrayList<SQLObject>();
+        if (tableSource != null) {
+            children.add(tableSource);
+        }
+        children.addAll(this.columns);
+        if (comment != null) {
+            children.add(comment);
+        }
+        if (subQuery != null) {
+            children.add(subQuery);
+        }
+        return children;
     }
 
     public static enum Level {
@@ -175,5 +312,106 @@ public class SQLCreateViewStatement extends SQLStatementImpl implements SQLDDLSt
                 acceptChild(visitor, comment);
             }
         }
+    }
+
+    public boolean isOnCluster() {
+        return onCluster;
+    }
+
+    public void setOnCluster(boolean onCluster) {
+        this.onCluster = onCluster;
+    }
+
+    public SQLName getTo() {
+        return to;
+    }
+
+    public void setTo(SQLName x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.to = x;
+    }
+
+    public SQLVariantRefExpr getReturns() {
+        return returns;
+    }
+
+    public void setReturns(SQLVariantRefExpr x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.returns = x;
+    }
+
+    public SQLTableDataType getReturnsDataType() {
+        return returnsDataType;
+    }
+
+    public void
+    setReturnsDataType(SQLTableDataType x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.returnsDataType = x;
+    }
+
+    public SQLBlockStatement getScript() {
+        return script;
+    }
+
+    public void setScript(SQLBlockStatement x) {
+        if (x != null) {
+            x.setParent(this);
+        }
+        this.script = x;
+    }
+
+    public SQLCreateViewStatement clone() {
+        SQLCreateViewStatement x = new SQLCreateViewStatement();
+
+        x.orReplace = orReplace;
+        x.force = force;
+        if (subQuery != null) {
+            x.setSubQuery(subQuery.clone());
+        }
+        x.ifNotExists = ifNotExists;
+
+        x.algorithm = algorithm;
+        if (definer != null) {
+            x.setDefiner(definer.clone());
+        }
+        x.sqlSecurity = sqlSecurity;
+        if (tableSource != null) {
+            x.setTableSource(tableSource.clone());
+        }
+        for (SQLTableElement column : columns) {
+            SQLTableElement column2 = column.clone();
+            column2.setParent(x);
+            x.columns.add(column2);
+        }
+        x.withCheckOption = withCheckOption;
+        x.withCascaded = withCascaded;
+        x.withLocal = withLocal;
+        x.withReadOnly = withReadOnly;
+
+        if (comment != null) {
+            x.setComment(comment.clone());
+        }
+
+        x.onCluster = onCluster;
+        if (x.to != null) {
+            to = x.to.clone();
+        }
+
+        if (x.returns != null) {
+            returns = x.returns.clone();
+        }
+
+        if (x.returnsDataType != null) {
+            returnsDataType = x.returnsDataType.clone();
+        }
+
+        return x;
     }
 }

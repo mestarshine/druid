@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
  */
 package com.alibaba.druid.wall.spi;
 
+import com.alibaba.druid.DbType;
 import com.alibaba.druid.sql.dialect.postgresql.parser.PGSQLStatementParser;
 import com.alibaba.druid.sql.dialect.postgresql.visitor.PGExportParameterVisitor;
+import com.alibaba.druid.sql.parser.SQLParserFeature;
 import com.alibaba.druid.sql.parser.SQLStatementParser;
 import com.alibaba.druid.sql.visitor.ExportParameterVisitor;
-import com.alibaba.druid.util.JdbcConstants;
 import com.alibaba.druid.wall.WallConfig;
 import com.alibaba.druid.wall.WallProvider;
 import com.alibaba.druid.wall.WallVisitor;
@@ -34,17 +35,17 @@ public class PGWallProvider extends WallProvider {
     }
 
     public PGWallProvider(WallConfig config){
-        super(config, JdbcConstants.POSTGRESQL);
+        super(config, DbType.postgresql);
     }
 
     @Override
     public SQLStatementParser createParser(String sql) {
-        return new PGSQLStatementParser(sql);
+        return new PGSQLStatementParser(sql, SQLParserFeature.EnableSQLBinaryOpExprGroup);
     }
 
     @Override
     public WallVisitor createWallVisitor() {
-        return new PGWallVisitor(this);
+        return new com.alibaba.druid.wall.spi.PGWallVisitor(this);
     }
 
     @Override

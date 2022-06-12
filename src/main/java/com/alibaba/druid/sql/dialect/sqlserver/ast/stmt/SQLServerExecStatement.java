@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,21 @@
  */
 package com.alibaba.druid.sql.dialect.sqlserver.ast.stmt;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLName;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerObjectImpl;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerStatement;
+import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerStatementImpl;
 import com.alibaba.druid.sql.dialect.sqlserver.visitor.SQLServerASTVisitor;
 
-public class SQLServerExecStatement extends SQLServerObjectImpl implements SQLServerStatement {
+import java.util.ArrayList;
+import java.util.List;
+
+public class SQLServerExecStatement extends SQLServerStatementImpl implements SQLServerStatement {
 
     private SQLName       returnStatus;
     private SQLName       moduleName;
     private List<SQLServerParameter> parameters = new ArrayList<SQLServerParameter>();
-    private String        dbType;
 
     public SQLName getModuleName() {
         return moduleName;
@@ -59,21 +59,10 @@ public class SQLServerExecStatement extends SQLServerObjectImpl implements SQLSe
     public void setReturnStatus(SQLName returnStatus) {
         this.returnStatus = returnStatus;
     }
-    
-    public String getDbType() {
-        return dbType;
-    }
-    
-    public void setDbType(String dbType) {
-        this.dbType = dbType;
-    }
-    
+
     /**
      * 
-     * @Description: SQLServer execute Parameter statement
-     * @author zz email:455910092@qq.com
-     * @date 2015-9-20
-     * @version V1.0
+     * @author zz [455910092@qq.com]
      */
     public static class SQLServerParameter extends SQLServerObjectImpl
     {

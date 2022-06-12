@@ -5,7 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,6 +108,10 @@ public class Log4j2Impl implements Log {
 
     public boolean isWarnEnabled() {
         return log.isEnabled(Level.WARN);
+    }
+    
+    public boolean isErrorEnabled() {
+        return log.isErrorEnabled();
     }
 
     public int getInfoCount() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import com.alibaba.druid.proxy.jdbc.StatementProxy;
 import com.alibaba.druid.util.Utils;
 
 /**
- * @author wenshao<szujobs@hotmail.com>
+ * @author wenshao [szujobs@hotmail.com]
  */
 public class EncodingConvertFilter extends FilterAdapter {
 
@@ -85,14 +85,8 @@ public class EncodingConvertFilter extends FilterAdapter {
         Object value = null;
         switch (columnType) {
             case Types.CHAR:
-                value = super.resultSet_getString(chain, result, columnIndex);
-                break;
             case Types.CLOB:
-                value = super.resultSet_getString(chain, result, columnIndex);
-                break;
             case Types.LONGVARCHAR:
-                value = super.resultSet_getString(chain, result, columnIndex);
-                break;
             case Types.VARCHAR:
                 value = super.resultSet_getString(chain, result, columnIndex);
                 break;
@@ -101,6 +95,27 @@ public class EncodingConvertFilter extends FilterAdapter {
         }
 
         return decodeObject(result.getStatementProxy().getConnectionProxy(), value);
+    }
+
+    @Override
+    public <T> T resultSet_getObject(FilterChain chain, ResultSetProxy result, int columnIndex, Class<T> type) throws SQLException {
+        ResultSet rawResultSet = result.getResultSetRaw();
+        ResultSetMetaData metadata = rawResultSet.getMetaData();
+        int columnType = metadata.getColumnType(columnIndex);
+
+        Object value = null;
+        switch (columnType) {
+            case Types.CHAR:
+            case Types.CLOB:
+            case Types.LONGVARCHAR:
+            case Types.VARCHAR:
+                value = super.resultSet_getString(chain, result, columnIndex);
+                break;
+            default:
+                value = super.resultSet_getObject(chain, result, columnIndex, type);
+        }
+
+        return (T) decodeObject(result.getStatementProxy().getConnectionProxy(), value);
     }
 
     @Override
@@ -113,14 +128,8 @@ public class EncodingConvertFilter extends FilterAdapter {
         Object value = null;
         switch (columnType) {
             case Types.CHAR:
-                value = super.resultSet_getString(chain, result, columnIndex);
-                break;
             case Types.CLOB:
-                value = super.resultSet_getString(chain, result, columnIndex);
-                break;
             case Types.LONGVARCHAR:
-                value = super.resultSet_getString(chain, result, columnIndex);
-                break;
             case Types.VARCHAR:
                 value = super.resultSet_getString(chain, result, columnIndex);
                 break;
@@ -141,14 +150,8 @@ public class EncodingConvertFilter extends FilterAdapter {
         Object value = null;
         switch (columnType) {
             case Types.CHAR:
-                value = super.resultSet_getString(chain, result, columnLabel);
-                break;
             case Types.CLOB:
-                value = super.resultSet_getString(chain, result, columnLabel);
-                break;
             case Types.LONGVARCHAR:
-                value = super.resultSet_getString(chain, result, columnLabel);
-                break;
             case Types.VARCHAR:
                 value = super.resultSet_getString(chain, result, columnLabel);
                 break;
@@ -156,6 +159,27 @@ public class EncodingConvertFilter extends FilterAdapter {
                 value = super.resultSet_getObject(chain, result, columnLabel);
         }
         return decodeObject(result.getStatementProxy().getConnectionProxy(), value);
+    }
+
+    @Override
+    public <T> T resultSet_getObject(FilterChain chain, ResultSetProxy result, String columnLabel, Class<T> type) throws SQLException {
+        ResultSet rawResultSet = result.getResultSetRaw();
+        ResultSetMetaData metadata = rawResultSet.getMetaData();
+        int columnIndex = rawResultSet.findColumn(columnLabel);
+        int columnType = metadata.getColumnType(columnIndex);
+
+        Object value = null;
+        switch (columnType) {
+            case Types.CHAR:
+            case Types.CLOB:
+            case Types.LONGVARCHAR:
+            case Types.VARCHAR:
+                value = super.resultSet_getString(chain, result, columnLabel);
+                break;
+            default:
+                value = super.resultSet_getObject(chain, result, columnLabel, type);
+        }
+        return (T) decodeObject(result.getStatementProxy().getConnectionProxy(), value);
     }
 
     @Override
